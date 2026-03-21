@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CogniCare — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div style="margin-bottom:32px;animation:fadeUp .5s ease both;">
+    <div class="section-label">Overview</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <h1 class="section-title">Good <span id="timeOfDay">morning</span>, Caregiver</h1>
+      <div style="font-size:13px;color:var(--text-muted);font-family:var(--font-mono);" id="dashClock"></div>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid" style="animation:fadeUp .5s .1s ease both;">
+    <div class="stat-card teal">
+      <div class="stat-icon">👤</div>
+      <div class="stat-num" id="s-patients">—</div>
+      <div class="stat-label">Patients Monitored</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-icon">🔔</div>
+      <div class="stat-num" id="s-reminders">—</div>
+      <div class="stat-label">Active Reminders</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">📊</div>
+      <div class="stat-num" id="s-today">—</div>
+      <div class="stat-label">Events Today</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">🧠</div>
+      <div class="stat-num" id="s-analyses">—</div>
+      <div class="stat-label">AI Analyses Run</div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;animation:fadeUp .5s .2s ease both;">
+
+    <!-- Today's reminders -->
+    <div class="card card-pad">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="section-label">Scheduled</div>
+          <div style="font-family:var(--font-display);font-size:18px;">Today's Reminders</div>
+        </div>
+        <a href="reminders.html" class="btn btn-secondary" style="font-size:12px;padding:7px 14px;">Manage →</a>
+      </div>
+      <div id="todayReminders">
+        <div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Activity feed -->
+    <div class="card card-pad">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="section-label">Recent</div>
+          <div style="font-family:var(--font-display);font-size:18px;">Activity Log</div>
+        </div>
+      </div>
+      <div id="activityFeed">
+        <div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Quick actions -->
+  <div style="margin-top:20px;animation:fadeUp .5s .3s ease both;">
+    <div class="section-label" style="margin-bottom:14px;">Quick Actions</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+      <a href="patient.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:32px;margin-bottom:8px;">👁️</div>
+        <div style="font-weight:600;font-size:14px;color:var(--text);">Patient View</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Open patient interface</div>
+      </a>
+      <a href="analyze.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:32px;margin-bottom:8px;">🔍</div>
+        <div style="font-weight:600;font-size:14px;color:var(--text);">Analyze Image</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">AI visual assessment</div>
+      </a>
+      <a href="chat.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:32px;margin-bottom:8px;">💬</div>
+        <div style="font-weight:600;font-size:14px;color:var(--text);">AI Assistant</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Ask care questions</div>
+      </a>
+      <a href="reminders.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:32px;margin-bottom:8px;">🔔</div>
+        <div style="font-weight:600;font-size:14px;color:var(--text);">Add Reminder</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Schedule care tasks</div>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<script>
+const TYPE_ICONS = {meal:'🍽️',medication:'💊',bathroom:'🚽',hydration:'💧',activity:'🚶',social:'👥',sleep:'😴',grooming:'🪥'};
+const TYPE_COLORS = {meal:'#fef3c7',medication:'#fee2e2',bathroom:'#dbeafe',hydration:'#ccfbf1',activity:'#dcfce7',social:'#f3e8ff',sleep:'#e0e7ff',grooming:'#fce7f3'};
+const ACT_COLORS = {analysis:'var(--teal)',chat:'var(--blue)',reminder_sent:'var(--amber)',alert:'var(--red)'};
+
+function updateClock(){
+  const now = new Date();
+  const h = now.getHours();
+  document.getElementById('dashClock').textContent = now.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  document.getElementById('timeOfDay').textContent = h<12?'morning':h<17?'afternoon':'evening';
+}
+updateClock(); setInterval(updateClock,1000);
+
+async function loadDashboard(){
+  try {
+    const [statsRes, remRes, actRes] = await Promise.all([
+      apiFetch('/api/stats'),
+      apiFetch('/api/reminders'),
+      apiFetch('/api/activity?limit=8')
+    ]);
+    const stats     = await statsRes.json();
+    const reminders = await remRes.json();
+    const activity  = await actRes.json();
+
+    document.getElementById('s-patients').textContent  = stats.patients;
+    document.getElementById('s-reminders').textContent = stats.activeReminders;
+    document.getElementById('s-today').textContent     = stats.activityToday;
+    document.getElementById('s-analyses').textContent  = stats.totalActivity;
+
+    // Today's reminders sorted by time
+    const sorted = [...reminders].filter(r=>r.active).sort((a,b)=>a.time.localeCompare(b.time));
+    const now = new Date();
+    const nowMin = now.getHours()*60+now.getMinutes();
+    document.getElementById('todayReminders').innerHTML = sorted.length
+      ? sorted.map(r=>{
+          const [h,m]   = r.time.split(':').map(Number);
+          const rMin    = h*60+m;
+          const isPast  = rMin < nowMin;
+          const isNext  = !isPast && (rMin - nowMin) < 60;
+          return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:${isNext?'var(--teal-light)':isPast?'#f8f8f8':'var(--bg-panel)'};border:1px solid ${isNext?'rgba(20,184,166,.3)':'var(--border)'};">
+            <div style="width:36px;height:36px;border-radius:9px;background:${TYPE_COLORS[r.type]||'#f0f0f0'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${TYPE_ICONS[r.type]||'📌'}</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:${isPast?'var(--text-dim)':'var(--text)'};">${r.label}</div>
+              <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;">${r.time}</div>
+            </div>
+            ${isNext?'<span class="badge badge-teal">NEXT</span>':''}
+            ${isPast?'<span style="font-size:11px;color:var(--text-dim);">Done</span>':''}
+          </div>`;
+        }).join('')
+      : '<div style="text-align:center;padding:20px;color:var(--text-dim);">No reminders set. <a href="reminders.html" style="color:var(--teal);">Add one →</a></div>';
+
+    // Activity feed
+    document.getElementById('activityFeed').innerHTML = activity.length
+      ? activity.map(a=>`
+          <div class="tl-item">
+            <div class="tl-dot-col">
+              <div class="tl-dot" style="background:${ACT_COLORS[a.type]||'var(--text-dim)'};"></div>
+              <div class="tl-line"></div>
+            </div>
+            <div class="tl-time">${fmtTime(a.timestamp)}</div>
+            <div class="tl-text">${a.message}</div>
+          </div>`).join('')
+      : '<div style="text-align:center;padding:20px;color:var(--text-dim);">No activity yet.</div>';
+  } catch(e){
+    console.error(e);
+    showToast('Could not reach server','error');
+  }
+}
+
+function fmtTime(iso){
+  const d=new Date(iso);
+  return d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+let _tt;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'success');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000);
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analyze — CogniCare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .upload-zone { border: 2px dashed var(--border); border-radius: 16px; padding: 48px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg-card); }
+    .upload-zone:hover,.upload-zone.drag { border-color: var(--teal); background: var(--teal-light); }
+    .upload-zone .icon { font-size: 48px; margin-bottom:12px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: 10px; margin-top: 14px; }
+    .preview-img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 2px solid var(--border); }
+    .json-output { background: #1a2332; color: #a8d5c2; font-family: 'JetBrains Mono',monospace; font-size: 12px; padding: 20px; border-radius: 12px; overflow-x: auto; white-space: pre; max-height: 400px; overflow-y: auto; }
+    .urgency-banner { padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .urgency-banner.routine   { background: var(--green-light); border: 1px solid rgba(34,197,94,.3); }
+    .urgency-banner.attention { background: var(--amber-light); border: 1px solid rgba(245,158,11,.3); }
+    .urgency-banner.urgent    { background: var(--red-light);   border: 1px solid rgba(239,68,68,.3); }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .tab { padding: 9px 18px; font-size: 13px; font-weight: 600; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); transition: all .2s; margin-bottom: -1px; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width .3s; }
+  </style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+  <div style="margin-bottom:28px;">
+    <div class="section-label">AI Visual Assessment</div>
+    <h1 class="section-title">Analyze Image or Video</h1>
+    <p style="color:var(--text-muted);margin-top:6px;font-size:14px;">Upload a photo or video of the patient. Our AI will analyze behavioral and physical indicators and provide a structured care report.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <!-- Left: Upload panel -->
+    <div>
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <div style="font-family:var(--font-display);font-size:18px;margin-bottom:16px;">Upload Media</div>
+
+        <!-- Patient selector -->
+        <div class="form-group">
+          <label class="form-label">Patient</label>
+          <select class="form-select" id="patientSelect"></select>
+        </div>
+
+        <!-- Context -->
+        <div class="form-group">
+          <label class="form-label">Additional Context (optional)</label>
+          <textarea class="form-textarea" id="contextInput" placeholder="e.g. Patient seemed confused this morning, hasn't eaten yet..."></textarea>
+        </div>
+
+        <!-- Upload zone -->
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+          <div class="icon">📷</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;">Drop image or video here</div>
+          <div style="font-size:13px;color:var(--text-muted);">or click to browse — JPG, PNG, MP4, MOV</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none" onchange="handleFiles(this.files)">
+
+        <!-- Previews -->
+        <div class="preview-grid" id="previewGrid"></div>
+
+        <!-- Progress -->
+        <div id="progressWrap" style="display:none;margin-top:14px;">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;" id="progressLabel">Extracting frames...</div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:13px;" id="analyzeBtn" onclick="runAnalysis()" disabled>
+          🔍 Analyze with AI
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Results panel -->
+    <div>
+      <div class="card card-pad" id="resultsPanel">
+        <div style="font-family:var(--font-display);font-size:18px;margin-bottom:16px;">Analysis Results</div>
+        <div id="resultsEmpty" style="text-align:center;padding:60px 20px;color:var(--text-dim);">
+          <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+          <div>Upload an image or video to begin analysis</div>
+        </div>
+        <div id="resultsContent" style="display:none;">
+
+          <!-- Urgency banner -->
+          <div class="urgency-banner" id="urgencyBanner">
+            <div style="font-size:28px;" id="urgencyIcon">✅</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;" id="urgencyLabel">Routine</div>
+              <div style="font-size:12px;color:var(--text-muted);">No immediate action required</div>
+            </div>
+          </div>
+
+          <!-- Tabs: Summary | Indicators | Recommendations | JSON -->
+          <div class="tabs">
+            <button class="tab active" onclick="showTab('summary',this)">Summary</button>
+            <button class="tab" onclick="showTab('indicators',this)">Indicators</button>
+            <button class="tab" onclick="showTab('recommendations',this)">Actions</button>
+            <button class="tab" onclick="showTab('json',this)">Raw JSON</button>
+          </div>
+
+          <div id="tab-summary">
+            <div style="font-size:14px;line-height:1.7;color:var(--text);" id="resultSummary"></div>
+            <div id="safetyFlagsWrap" style="margin-top:16px;display:none;">
+              <div style="font-weight:700;color:var(--red);margin-bottom:8px;">⚠ Safety Flags</div>
+              <div id="safetyFlags"></div>
+            </div>
+            <div id="needsWrap" style="margin-top:16px;">
+              <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--text-muted);">IMMEDIATE NEEDS</div>
+              <div id="immediateNeeds"></div>
+            </div>
+          </div>
+
+          <div id="tab-indicators" style="display:none;">
+            <div style="margin-bottom:12px;">
+              <div class="section-label" style="margin-bottom:8px;">Cognitive</div>
+              <div class="indicator-grid" id="cognitiveGrid"></div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div class="section-label" style="margin-bottom:8px;">Physical</div>
+              <div id="physicalGrid"></div>
+            </div>
+          </div>
+
+          <div id="tab-recommendations" style="display:none;">
+            <div id="recommendationsList"></div>
+          </div>
+
+          <div id="tab-json" style="display:none;">
+            <div class="json-output" id="jsonOutput"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+let uploadedImages = [];
+
+// Load patients
+async function loadPatients(){
+  try{
+    const res=await apiFetch('/api/patients');
+    const patients=await res.json();
+    document.getElementById('patientSelect').innerHTML=patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  }catch{ document.getElementById('patientSelect').innerHTML='<option value="P001">Margaret Thompson</option>'; }
+}
+loadPatients();
+
+// File handling
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files){
+  uploadedImages=[];
+  document.getElementById('previewGrid').innerHTML='';
+  const arr=[...files];
+  let processed=0;
+
+  arr.forEach(file=>{
+    if(file.type.startsWith('image/')){
+      const reader=new FileReader();
+      reader.onload=e=>{
+        const b64=e.target.result.split(',')[1];
+        uploadedImages.push({data:b64,mediaType:file.type});
+        addPreview(e.target.result);
+        processed++;
+        if(processed===arr.length) document.getElementById('analyzeBtn').disabled=false;
+      };
+      reader.readAsDataURL(file);
+    } else if(file.type.startsWith('video/')){
+      extractFrames(file, arr.length===1 ? 4 : 2, frames=>{
+        frames.forEach(f=>{
+          uploadedImages.push({data:f.split(',')[1],mediaType:'image/jpeg'});
+          addPreview(f);
+        });
+        processed++;
+        if(processed===arr.length) document.getElementById('analyzeBtn').disabled=false;
+      });
+    }
+  });
+}
+
+function addPreview(src){
+  const img=document.createElement('img');
+  img.src=src; img.className='preview-img';
+  document.getElementById('previewGrid').appendChild(img);
+}
+
+// Extract frames from video using canvas
+function extractFrames(videoFile, count, callback){
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('progressLabel').textContent='Extracting video frames...';
+  const url=URL.createObjectURL(videoFile);
+  const video=document.createElement('video');
+  video.src=url; video.muted=true;
+  const frames=[];
+  video.onloadedmetadata=()=>{
+    const duration=video.duration;
+    let captured=0;
+    const times=Array.from({length:count},(_,i)=>(duration/(count+1))*(i+1));
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    function captureNext(){
+      if(captured>=count){ URL.revokeObjectURL(url); callback(frames); return; }
+      video.currentTime=times[captured];
+    }
+    video.onseeked=()=>{
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0);
+      frames.push(canvas.toDataURL('image/jpeg',0.8));
+      captured++;
+      document.getElementById('progressFill').style.width=`${(captured/count)*100}%`;
+      document.getElementById('progressLabel').textContent=`Extracting frame ${captured}/${count}...`;
+      captureNext();
+    };
+    captureNext();
+  };
+  video.load();
+}
+
+// Run analysis
+async function runAnalysis(){
+  if(!uploadedImages.length){ showToast('Please upload an image first','error'); return; }
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true; btn.textContent='🧠 Analyzing...';
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('progressLabel').textContent='Sending to AI...';
+  document.getElementById('progressFill').style.width='60%';
+
+  try{
+    const patientId=document.getElementById('patientSelect').value;
+    const context=document.getElementById('contextInput').value;
+    const res=await apiFetch('/api/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({images:uploadedImages,patientId,context})
+    });
+    const data=await res.json();
+    if(!data.success) throw new Error(data.error||'Analysis failed');
+    document.getElementById('progressFill').style.width='100%';
+    renderResults(data.analysis, data.raw);
+    showToast('Analysis complete','success');
+  }catch(e){
+    showToast(`Error: ${e.message}`,'error');
+    console.error(e);
+  }finally{
+    btn.disabled=false; btn.textContent='🔍 Analyze with AI';
+    setTimeout(()=>{ document.getElementById('progressWrap').style.display='none'; document.getElementById('progressFill').style.width='0%'; },1000);
+  }
+}
+
+const URGENCY_CONFIG={
+  routine:   {icon:'✅',label:'Routine — No Immediate Action',  cls:'routine'},
+  attention: {icon:'⚠️',label:'Needs Attention',                cls:'attention'},
+  urgent:    {icon:'🚨',label:'Urgent — Act Now',               cls:'urgent'}
+};
+
+const INDICATOR_COLORS={none:'iv-none',mild:'iv-mild',moderate:'iv-moderate',severe:'iv-severe'};
+
+function renderResults(a, raw){
+  document.getElementById('resultsEmpty').style.display='none';
+  document.getElementById('resultsContent').style.display='block';
+
+  // Urgency
+  const uc=URGENCY_CONFIG[a.urgency]||URGENCY_CONFIG.routine;
+  const banner=document.getElementById('urgencyBanner');
+  banner.className=`urgency-banner ${uc.cls}`;
+  document.getElementById('urgencyIcon').textContent=uc.icon;
+  document.getElementById('urgencyLabel').textContent=uc.label;
+
+  // Summary
+  document.getElementById('resultSummary').textContent=a.summary||'No summary available.';
+
+  // Safety flags
+  if(a.safetyFlags?.length){
+    document.getElementById('safetyFlagsWrap').style.display='block';
+    document.getElementById('safetyFlags').innerHTML=a.safetyFlags.map(f=>`<div class="badge badge-red" style="margin-bottom:6px;display:flex;">⚠ ${f}</div>`).join('');
+  }
+
+  // Immediate needs
+  document.getElementById('immediateNeeds').innerHTML=(a.immediateNeeds||[]).map(n=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--teal-light);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--teal-dark);font-weight:500;">
+      <span>→</span>${n}
+    </div>`).join('')||'<div style="color:var(--text-dim);font-size:13px;">No immediate needs identified.</div>';
+
+  // Cognitive indicators
+  const cog=a.cognitiveIndicators||{};
+  document.getElementById('cognitiveGrid').innerHTML=Object.entries(cog).map(([k,v])=>`
+    <div class="indicator-item">
+      <span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span>
+      <span class="indicator-value ${INDICATOR_COLORS[v?.toLowerCase()]||''}">${v||'—'}</span>
+    </div>`).join('');
+
+  // Physical indicators
+  const phys=a.physicalIndicators||{};
+  document.getElementById('physicalGrid').innerHTML=Object.entries(phys).map(([k,v])=>`
+    <div class="indicator-item" style="margin-bottom:6px;">
+      <span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span>
+      <span class="indicator-value" style="font-size:12px;color:var(--text);">${v||'—'}</span>
+    </div>`).join('');
+
+  // Recommendations
+  document.getElementById('recommendationsList').innerHTML=(a.recommendations||[]).map((r,i)=>`
+    <div style="display:flex;gap:12px;padding:12px 14px;background:var(--bg-panel);border-radius:8px;margin-bottom:8px;border:1px solid var(--border);">
+      <div style="width:24px;height:24px;background:var(--teal);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text);">${r}</div>
+    </div>`).join('');
+
+  // JSON
+  document.getElementById('jsonOutput').textContent=JSON.stringify(a,null,2);
+}
+
+function showTab(name, btn){
+  ['summary','indicators','recommendations','json'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===name?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+let _tt;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'success');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3500);
+}
+</script>
+</body>
+</html>

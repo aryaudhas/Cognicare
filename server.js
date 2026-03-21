@@ -1,9 +1,8 @@
 // ============================================================
 //  CogniCare — Express Backend (Google Gemini)
 //
-//  AUTO MODEL DETECTION: On startup the server tests every
-//  known free Gemini model and picks the first one that works.
-//  No manual config needed — it just finds what's available.
+//  AUTO MODEL DETECTION: Tests each model at startup and picks
+//  the first working one automatically.
 //
 //  Required: GEMINI_API_KEY — free at aistudio.google.com
 // ============================================================
@@ -20,49 +19,39 @@ const PORT = process.env.PORT || 3000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-// All known free Gemini models — tried in order until one works
+// ── Correct model names taken directly from the API list ──────
 const MODEL_CANDIDATES = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
   'gemini-2.0-flash-lite',
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-pro',
-  'gemini-1.0-pro',
-  'gemini-pro',
+  'gemini-2.0-flash-lite-001',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-pro-latest',
+  'gemini-2.5-pro',
 ];
 
-let genAI        = null;
-let activeModel  = null;  // set after auto-detection at startup
+const genAI       = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+let   activeModel = null;
 
-if (GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-}
-
-// ── AUTO MODEL DETECTION ──────────────────────────────────────
+// ── AUTO DETECT WORKING MODEL ─────────────────────────────────
 async function detectWorkingModel() {
-  if (!genAI) {
-    console.log('  ⚠  No GEMINI_API_KEY set');
-    return null;
-  }
-
+  if (!genAI) { console.log('  ⚠  No GEMINI_API_KEY set'); return null; }
   console.log('  🔍 Auto-detecting working Gemini model...');
-
   for (const modelId of MODEL_CANDIDATES) {
     try {
       const model  = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent('Say "ok" in one word.');
-      const text   = result.response.text();
-      if (text) {
-        console.log(`  ✓  Working model found: ${modelId}`);
+      const result = await model.generateContent('Say ok');
+      if (result.response.text()) {
+        console.log(`  ✓  Working model: ${modelId}`);
         return modelId;
       }
     } catch (e) {
-      console.log(`  ✗  ${modelId}: ${e.message.slice(0, 60)}`);
+      console.log(`  ✗  ${modelId}: ${e.message.slice(0, 80)}`);
     }
   }
-
   console.log('  ✗  No working model found — check your API key');
   return null;
 }
@@ -124,30 +113,29 @@ function requireAI() {
     throw new Error(
       !genAI
         ? 'GEMINI_API_KEY not set. Get your free key at aistudio.google.com'
-        : 'No working Gemini model found for your API key. Check aistudio.google.com for available models.'
+        : 'No working Gemini model found. Check your API key at aistudio.google.com'
     );
   }
 }
 
 function cleanJSON(text) {
-  return text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 }
 
-// Try each model candidate until one works (runtime fallback)
+// Retry across models if one fails at runtime
 async function tryModels(fn) {
-  // First try the known working model
   if (activeModel) {
-    try { return await fn(activeModel); } catch (e) {
+    try { return await fn(activeModel); }
+    catch (e) {
       if (!e.message.includes('404') && !e.message.includes('429') && !e.message.includes('not found')) throw e;
-      console.warn(`Active model ${activeModel} failed, trying others...`);
+      console.warn(`Model ${activeModel} failed at runtime, trying others...`);
     }
   }
-  // Try all candidates
   for (const modelId of MODEL_CANDIDATES) {
     if (modelId === activeModel) continue;
     try {
       const result = await fn(modelId);
-      activeModel  = modelId; // update active model if a new one works
+      activeModel  = modelId;
       console.log(`Switched to model: ${modelId}`);
       return result;
     } catch (e) {
@@ -160,10 +148,7 @@ async function tryModels(fn) {
 async function geminiText(prompt, systemInstruction = '') {
   requireAI();
   return tryModels(async (modelId) => {
-    const model  = genAI.getGenerativeModel({
-      model: modelId,
-      ...(systemInstruction ? { systemInstruction } : {})
-    });
+    const model  = genAI.getGenerativeModel({ model: modelId, ...(systemInstruction ? { systemInstruction } : {}) });
     const result = await model.generateContent(prompt);
     return result.response.text();
   });
@@ -172,10 +157,7 @@ async function geminiText(prompt, systemInstruction = '') {
 async function geminiChat(history, systemInstruction = '') {
   requireAI();
   return tryModels(async (modelId) => {
-    const model = genAI.getGenerativeModel({
-      model: modelId,
-      ...(systemInstruction ? { systemInstruction } : {})
-    });
+    const model = genAI.getGenerativeModel({ model: modelId, ...(systemInstruction ? { systemInstruction } : {}) });
     const geminiHistory = history.slice(0, -1).map(m => ({
       role:  m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -227,9 +209,9 @@ async function getYouTubeData(videoId) {
   let metadata = { title: 'Unknown', author: 'Unknown' };
   try {
     const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-    if (r.ok) { const d = await r.json(); metadata.title = d.title||'Unknown'; metadata.author = d.author_name||'Unknown'; }
+    if (r.ok) { const d = await r.json(); metadata.title = d.title || 'Unknown'; metadata.author = d.author_name || 'Unknown'; }
   } catch { }
-  return { images, metadata, videoId, videoUrl:`https://www.youtube.com/watch?v=${videoId}` };
+  return { images, metadata, videoId, videoUrl: `https://www.youtube.com/watch?v=${videoId}` };
 }
 
 // ── API: AI STATUS ────────────────────────────────────────────
@@ -249,13 +231,13 @@ app.get('/api/ai-status', (req, res) => {
 // ── API: YOUTUBE INFO ─────────────────────────────────────────
 app.post('/api/youtube-info', async (req, res) => {
   const { url } = req.body;
-  if (!url) return res.status(400).json({ error:'URL required' });
+  if (!url) return res.status(400).json({ error: 'URL required' });
   const videoId = extractYouTubeId(url);
-  if (!videoId) return res.status(400).json({ error:'Invalid YouTube URL' });
+  if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
   try {
     const data = await getYouTubeData(videoId);
-    res.json({ success:true, ...data });
-  } catch (e) { res.status(500).json({ error:e.message }); }
+    res.json({ success: true, ...data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── API: ANALYZE ──────────────────────────────────────────────
@@ -267,21 +249,21 @@ app.post('/api/analyze', async (req, res) => {
   if (youtubeUrl) {
     try {
       const videoId = extractYouTubeId(youtubeUrl);
-      if (!videoId) return res.status(400).json({ error:'Invalid YouTube URL' });
-      const ytData   = await getYouTubeData(videoId);
+      if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
+      const ytData    = await getYouTubeData(videoId);
       imagesToAnalyze = [...imagesToAnalyze, ...ytData.images];
-      videoContext    = `YouTube video: "${ytData.metadata.title}" by ${ytData.metadata.author}. ${context||''}`;
-    } catch (e) { return res.status(500).json({ error:`YouTube fetch failed: ${e.message}` }); }
+      videoContext    = `YouTube video: "${ytData.metadata.title}" by ${ytData.metadata.author}. ${context || ''}`;
+    } catch (e) { return res.status(500).json({ error: `YouTube fetch failed: ${e.message}` }); }
   }
 
-  if (!imagesToAnalyze.length) return res.status(400).json({ error:'No images provided' });
+  if (!imagesToAnalyze.length) return res.status(400).json({ error: 'No images provided' });
 
   try {
-    const patient = db.patients.find(p=>p.id===patientId);
+    const patient = db.patients.find(p => p.id === patientId);
     const name    = patientName || patient?.name || 'the patient';
 
-    const imageParts = imagesToAnalyze.slice(0,4).map(img => ({
-      inlineData: { data:img.data, mimeType:img.mediaType||'image/jpeg' }
+    const imageParts = imagesToAnalyze.slice(0, 4).map(img => ({
+      inlineData: { data: img.data, mimeType: img.mediaType || 'image/jpeg' }
     }));
 
     const prompt = `You are a compassionate AI medical assistant specializing in cognitive decline monitoring.
@@ -318,54 +300,54 @@ Return ONLY this JSON with no markdown, no extra text:
     if (!match) throw new Error('AI did not return valid JSON — please try again');
     const analysis = JSON.parse(match[0]);
 
-    logActivity(patientId||'unknown', 'analysis',
-      `Analysis (${youtubeUrl?'YouTube':'image'}): ${analysis.urgency} — ${(analysis.summary||'').slice(0,80)}`);
+    logActivity(patientId || 'unknown', 'analysis',
+      `Analysis (${youtubeUrl ? 'YouTube' : 'image'}): ${analysis.urgency} — ${(analysis.summary || '').slice(0, 80)}`);
 
-    res.json({ success:true, analysis, modelUsed:activeModel });
+    res.json({ success: true, analysis, modelUsed: activeModel });
   } catch (e) {
     console.error('Analysis error:', e.message);
-    res.status(500).json({ error:e.message });
+    res.status(500).json({ error: e.message });
   }
 });
 
 // ── API: CHAT ─────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages, patientId, mode } = req.body;
-  if (!messages?.length) return res.status(400).json({ error:'No messages' });
+  if (!messages?.length) return res.status(400).json({ error: 'No messages' });
 
   try {
-    const patient   = db.patients.find(p=>p.id===patientId);
-    const reminders = db.reminders.filter(r=>r.patientId===patientId&&r.active);
+    const patient   = db.patients.find(p => p.id === patientId);
+    const reminders = db.reminders.filter(r => r.patientId === patientId && r.active);
 
     const systemInstruction = mode === 'patient'
-      ? `You are a warm gentle AI companion for ${patient?.name||'a person'} who has cognitive decline.
+      ? `You are a warm gentle AI companion for ${patient?.name || 'a person'} who has cognitive decline.
 - Speak in SIMPLE SHORT sentences. Max 3 sentences per response.
 - Be extremely warm, reassuring and positive at all times.
 - If confused, gently orient them by telling them the day and time.
 - If they mention pain, a fall, or distress, tell them to press the red emergency button immediately.
 - Use their first name often. Never correct harshly — redirect gently.
-Patient: ${patient?`${patient.name}, Age ${patient.age}, Stage: ${patient.stage}`:'Unknown'}
-Reminders today: ${reminders.map(r=>`${r.time} — ${r.label}`).join(', ')||'None'}`
+Patient: ${patient ? `${patient.name}, Age ${patient.age}, Stage: ${patient.stage}` : 'Unknown'}
+Reminders today: ${reminders.map(r => `${r.time} — ${r.label}`).join(', ') || 'None'}`
       : `You are an expert compassionate AI assistant for caregivers managing cognitive decline patients.
 You help with behavioral changes, care strategies, communication techniques, managing agitation and sundowning,
 caregiver burnout, understanding disease stages, safety assessments, and activities for cognitive stimulation.
 Always be evidence-based and remind caregivers to consult medical professionals for clinical decisions.
-Patient: ${patient?`${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}. Notes: ${patient.notes}`:'Not specified'}`;
+Patient: ${patient ? `${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}. Notes: ${patient.notes}` : 'Not specified'}`;
 
     const response = await geminiChat(messages, systemInstruction);
-    logActivity(patientId||'unknown', 'chat', `${mode==='patient'?'Patient':'Caregiver'} used AI assistant`);
-    res.json({ success:true, response, modelUsed:activeModel });
+    logActivity(patientId || 'unknown', 'chat', `${mode === 'patient' ? 'Patient' : 'Caregiver'} used AI assistant`);
+    res.json({ success: true, response, modelUsed: activeModel });
   } catch (e) {
     console.error('Chat error:', e.message);
-    res.status(500).json({ error:e.message });
+    res.status(500).json({ error: e.message });
   }
 });
 
 // ── API: SUGGEST REMINDERS ────────────────────────────────────
 app.post('/api/suggest-reminders', async (req, res) => {
   const { patientId } = req.body;
-  const patient = db.patients.find(p=>p.id===patientId);
-  if (!patient) return res.status(404).json({ error:'Patient not found' });
+  const patient = db.patients.find(p => p.id === patientId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
   try {
     const prompt = `Generate a personalized daily reminder schedule for this cognitive decline patient:
 Name: ${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}
@@ -379,34 +361,86 @@ Return ONLY a JSON array. Each item must have:
 
 8-12 reminders spread sensibly across the day. JSON array ONLY, no markdown.`;
 
-    const raw     = await geminiText(prompt);
-    const clean   = cleanJSON(raw);
-    const match   = clean.match(/\[[\s\S]*\]/);
+    const raw   = await geminiText(prompt);
+    const clean = cleanJSON(raw);
+    const match = clean.match(/\[[\s\S]*\]/);
     if (!match) throw new Error('Could not parse suggestions');
-    res.json({ success:true, suggestions:JSON.parse(match[0]), modelUsed:activeModel });
-  } catch (e) { res.status(500).json({ error:e.message }); }
+    res.json({ success: true, suggestions: JSON.parse(match[0]), modelUsed: activeModel });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── PATIENTS ──────────────────────────────────────────────────
-app.get('/api/patients',     (req,res)=>res.json(db.patients));
-app.get('/api/patients/:id', (req,res)=>{ const p=db.patients.find(p=>p.id===req.params.id); if(!p)return res.status(404).json({error:'Not found'}); res.json(p); });
-app.post('/api/patients', (req,res)=>{ const{name,age,stage,caregiver,phone,notes}=req.body; if(!name)return res.status(400).json({error:'Name required'}); const p={id:`P${Date.now()}`,name,age:age||'',stage:stage||'Mild',caregiver:caregiver||'',phone:phone||'',notes:notes||'',createdAt:new Date().toISOString()}; db.patients.push(p);saveDB();res.status(201).json(p); });
-app.patch('/api/patients/:id', (req,res)=>{ const p=db.patients.find(p=>p.id===req.params.id); if(!p)return res.status(404).json({error:'Not found'}); ['name','age','stage','caregiver','phone','notes'].forEach(f=>{if(req.body[f]!==undefined)p[f]=req.body[f];}); saveDB();res.json(p); });
-app.delete('/api/patients/:id', (req,res)=>{ const idx=db.patients.findIndex(p=>p.id===req.params.id); if(idx===-1)return res.status(404).json({error:'Not found'}); db.patients.splice(idx,1);saveDB();res.json({deleted:true}); });
+app.get('/api/patients',     (req, res) => res.json(db.patients));
+app.get('/api/patients/:id', (req, res) => {
+  const p = db.patients.find(p => p.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  res.json(p);
+});
+app.post('/api/patients', (req, res) => {
+  const { name, age, stage, caregiver, phone, notes } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  const p = { id:`P${Date.now()}`, name, age:age||'', stage:stage||'Mild', caregiver:caregiver||'', phone:phone||'', notes:notes||'', createdAt:new Date().toISOString() };
+  db.patients.push(p); saveDB(); res.status(201).json(p);
+});
+app.patch('/api/patients/:id', (req, res) => {
+  const p = db.patients.find(p => p.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  ['name','age','stage','caregiver','phone','notes'].forEach(f => { if (req.body[f] !== undefined) p[f] = req.body[f]; });
+  saveDB(); res.json(p);
+});
+app.delete('/api/patients/:id', (req, res) => {
+  const idx = db.patients.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  db.patients.splice(idx, 1); saveDB(); res.json({ deleted: true });
+});
 
 // ── REMINDERS ─────────────────────────────────────────────────
-app.get('/api/reminders', (req,res)=>{ const{patientId}=req.query; res.json(patientId?db.reminders.filter(r=>r.patientId===patientId):db.reminders); });
-app.post('/api/reminders', (req,res)=>{ const{patientId,type,label,time,days}=req.body; if(!patientId||!type||!label||!time)return res.status(400).json({error:'Missing fields'}); const r={id:`R${Date.now()}`,patientId,type,label,time,days:days||['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],active:true,createdAt:new Date().toISOString()}; db.reminders.push(r);saveDB();res.status(201).json(r); });
-app.patch('/api/reminders/:id', (req,res)=>{ const r=db.reminders.find(r=>r.id===req.params.id); if(!r)return res.status(404).json({error:'Not found'}); ['type','label','time','days','active'].forEach(f=>{if(req.body[f]!==undefined)r[f]=req.body[f];}); saveDB();res.json(r); });
-app.delete('/api/reminders/:id', (req,res)=>{ const idx=db.reminders.findIndex(r=>r.id===req.params.id); if(idx===-1)return res.status(404).json({error:'Not found'}); db.reminders.splice(idx,1);saveDB();res.json({deleted:true}); });
+app.get('/api/reminders', (req, res) => {
+  const { patientId } = req.query;
+  res.json(patientId ? db.reminders.filter(r => r.patientId === patientId) : db.reminders);
+});
+app.post('/api/reminders', (req, res) => {
+  const { patientId, type, label, time, days } = req.body;
+  if (!patientId || !type || !label || !time) return res.status(400).json({ error: 'Missing fields' });
+  const r = { id:`R${Date.now()}`, patientId, type, label, time, days:days||['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], active:true, createdAt:new Date().toISOString() };
+  db.reminders.push(r); saveDB(); res.status(201).json(r);
+});
+app.patch('/api/reminders/:id', (req, res) => {
+  const r = db.reminders.find(r => r.id === req.params.id);
+  if (!r) return res.status(404).json({ error: 'Not found' });
+  ['type','label','time','days','active'].forEach(f => { if (req.body[f] !== undefined) r[f] = req.body[f]; });
+  saveDB(); res.json(r);
+});
+app.delete('/api/reminders/:id', (req, res) => {
+  const idx = db.reminders.findIndex(r => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  db.reminders.splice(idx, 1); saveDB(); res.json({ deleted: true });
+});
 
 // ── ACTIVITY + STATS ──────────────────────────────────────────
-app.get('/api/activity', (req,res)=>{ const{patientId,limit}=req.query; let logs=patientId?db.activity.filter(a=>a.patientId===patientId):db.activity; if(limit)logs=logs.slice(0,parseInt(limit)); res.json(logs); });
-app.post('/api/activity', (req,res)=>{ logActivity(req.body.patientId,req.body.type,req.body.message); res.status(201).json({logged:true}); });
-app.get('/api/stats', (req,res)=>{ res.json({ patients:db.patients.length, activeReminders:db.reminders.filter(r=>r.active).length, activityToday:db.activity.filter(a=>new Date(a.timestamp)>new Date(Date.now()-86400000)).length, totalActivity:db.activity.length }); });
+app.get('/api/activity', (req, res) => {
+  const { patientId, limit } = req.query;
+  let logs = patientId ? db.activity.filter(a => a.patientId === patientId) : db.activity;
+  if (limit) logs = logs.slice(0, parseInt(limit));
+  res.json(logs);
+});
+app.post('/api/activity', (req, res) => {
+  logActivity(req.body.patientId, req.body.type, req.body.message);
+  res.status(201).json({ logged: true });
+});
+app.get('/api/stats', (req, res) => {
+  res.json({
+    patients:        db.patients.length,
+    activeReminders: db.reminders.filter(r => r.active).length,
+    activityToday:   db.activity.filter(a => new Date(a.timestamp) > new Date(Date.now() - 86400000)).length,
+    totalActivity:   db.activity.length
+  });
+});
 
 // ── CATCH-ALL ─────────────────────────────────────────────────
-app.get('*', (req,res)=>{ res.sendFile(path.join(__dirname,'public','index.html')); });
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ── START ─────────────────────────────────────────────────────
 app.listen(PORT, async () => {
@@ -415,13 +449,12 @@ app.listen(PORT, async () => {
   console.log(`  ●   http://localhost:${PORT}`);
   console.log(`  🔑  API Key: ${GEMINI_API_KEY ? '✓ Set' : '✗ Missing — get free key at aistudio.google.com'}`);
   console.log('');
-
   if (GEMINI_API_KEY) {
     activeModel = await detectWorkingModel();
     if (activeModel) {
-      console.log(`  🚀  Ready with model: ${activeModel}`);
+      console.log(`  🚀  Ready — using model: ${activeModel}`);
     } else {
-      console.log('  ⚠   Could not find a working model. Check your API key.');
+      console.log('  ⚠   No working model found. Check your API key at aistudio.google.com');
     }
   }
   console.log('');

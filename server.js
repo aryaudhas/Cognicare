@@ -383,8 +383,9 @@ Respond with a JSON array ONLY. No markdown, no extra text.`;
 });
 
 // ── CATCH-ALL ─────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ── START ─────────────────────────────────────────────────────
@@ -396,4 +397,6 @@ app.listen(PORT, () => {
   console.log(`  💡  Get your FREE key at: aistudio.google.com`);
   console.log('');
 });
+
+
 

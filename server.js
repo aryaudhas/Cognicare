@@ -26,7 +26,7 @@ const DB_FILE  = path.join(DATA_DIR, 'db.json');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 // ── DB helpers ────────────────────────────────────────────────
 function loadDB() {
@@ -384,7 +384,7 @@ Respond with a JSON array ONLY. No markdown, no extra text.`;
 
 // ── CATCH-ALL ─────────────────────────────────────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── START ─────────────────────────────────────────────────────
@@ -396,3 +396,4 @@ app.listen(PORT, () => {
   console.log(`  💡  Get your FREE key at: aistudio.google.com`);
   console.log('');
 });
+

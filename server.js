@@ -286,6 +286,106 @@ app.post('/api/youtube-info', async (req, res) => {
 });
 
 // ── API: ANALYZE ──────────────────────────────────────────────
+// ── SAFETY RULES — what to detect and what to do ─────────────
+const SAFETY_RULES = [
+  {
+    id: 'stove',
+    keywords: ['stove','oven','burner','cooktop','gas','flame','cooking','hob'],
+    patientReminder: 'Please remember to turn off the stove when you are done cooking. Safety first! 🔥',
+    caregiverAlert:  'Patient appears to be using the stove. Please monitor and ensure it is turned off after use.',
+    severity: 'high',
+    tip: 'Turn off the stove when done'
+  },
+  {
+    id: 'knife',
+    keywords: ['knife','knives','blade','chopping','cutting','scissors','sharp'],
+    patientReminder: 'Please be very careful with sharp objects. Take your time and stay safe. 🔪',
+    caregiverAlert:  'Patient appears to be handling a knife or sharp object. Please supervise.',
+    severity: 'high',
+    tip: 'Be careful with sharp objects'
+  },
+  {
+    id: 'stairs',
+    keywords: ['stairs','staircase','steps','ladder','climbing','descending'],
+    patientReminder: 'Please hold the handrail tightly when going up or down the stairs. Take it slowly. 🪜',
+    caregiverAlert:  'Patient is near stairs. Fall risk — please ensure they use the handrail.',
+    severity: 'medium',
+    tip: 'Hold handrail on stairs'
+  },
+  {
+    id: 'medication',
+    keywords: ['pill','pills','medication','medicine','bottle','tablets','capsules','drugs'],
+    patientReminder: 'If those are your medications, only take the ones your caregiver has prepared for you. 💊',
+    caregiverAlert:  'Patient appears to be handling medications. Please verify they are taking the correct dose.',
+    severity: 'high',
+    tip: 'Medication supervision needed'
+  },
+  {
+    id: 'water',
+    keywords: ['tap','faucet','running water','sink','bath','bathtub','shower','flooding'],
+    patientReminder: 'Please remember to turn off the tap when you are finished. 🚿',
+    caregiverAlert:  'Patient is using water fixtures. Please check taps are turned off properly.',
+    severity: 'medium',
+    tip: 'Turn off taps when done'
+  },
+  {
+    id: 'door',
+    keywords: ['door','front door','exit','outside','leaving','wandering','gate'],
+    patientReminder: 'Please stay inside where it is safe and warm. Your caregiver will be with you soon. 🚪',
+    caregiverAlert:  'Patient appears to be near an exit door. Wandering risk — please check on them immediately.',
+    severity: 'critical',
+    tip: 'Wandering risk — near exit'
+  },
+  {
+    id: 'fall_risk',
+    keywords: ['wet floor','slippery','standing on chair','unstable','no shoes','socks only','rug'],
+    patientReminder: 'Please be careful — the floor may be slippery. Hold on to something steady. 🛑',
+    caregiverAlert:  'Potential fall hazard detected in the environment. Please check and make area safe.',
+    severity: 'high',
+    tip: 'Fall hazard detected'
+  },
+  {
+    id: 'iron',
+    keywords: ['iron','ironing','ironing board','steam iron'],
+    patientReminder: 'Please remember to turn off the iron when you are finished. It can get very hot! 👕',
+    caregiverAlert:  'Patient is using an iron. Please ensure it is unplugged after use.',
+    severity: 'high',
+    tip: 'Turn off iron when done'
+  },
+  {
+    id: 'kettle',
+    keywords: ['kettle','boiling water','hot water','steam','tea'],
+    patientReminder: 'Be careful — the kettle and water are very hot. Pour slowly and carefully. ☕',
+    caregiverAlert:  'Patient is using a kettle with boiling water. Please monitor for burn risk.',
+    severity: 'medium',
+    tip: 'Hot water burn risk'
+  },
+  {
+    id: 'alone_outside',
+    keywords: ['outside alone','garden alone','yard alone','street','road','traffic','alone outdoors'],
+    patientReminder: 'Please stay close to home. If you want to go outside, let your caregiver know first. 🏡',
+    caregiverAlert:  'Patient appears to be outside or in the garden alone. Please check on them.',
+    severity: 'high',
+    tip: 'Patient outside alone'
+  },
+  {
+    id: 'electrical',
+    keywords: ['electrical','socket','plug','wire','cables','extension cord','exposed wire'],
+    patientReminder: 'Please do not touch electrical sockets or wires. Ask your caregiver for help. ⚡',
+    caregiverAlert:  'Patient is near electrical hazards. Please supervise and make area safe.',
+    severity: 'critical',
+    tip: 'Electrical hazard nearby'
+  },
+  {
+    id: 'cleaning',
+    keywords: ['cleaning products','bleach','chemicals','spray bottle','detergent','poison'],
+    patientReminder: 'Please do not touch cleaning products — they can be harmful. Ask your caregiver for help. 🧴',
+    caregiverAlert:  'Patient is handling cleaning products or chemicals. Please supervise immediately.',
+    severity: 'critical',
+    tip: 'Hazardous chemicals in use'
+  }
+];
+
 app.post('/api/analyze', async (req, res) => {
   const { images, patientId, patientName, context, youtubeUrl } = req.body;
   let imagesToAnalyze = images || [], videoContext = context || '';
@@ -297,18 +397,117 @@ app.post('/api/analyze', async (req, res) => {
   }
   if (!imagesToAnalyze.length) return res.status(400).json({ error:'No images provided' });
   try {
-    const patient=db.patients.find(p=>p.id===patientId), name=patientName||patient?.name||'the patient';
-    const imageParts=imagesToAnalyze.slice(0,4).map(img=>({inlineData:{data:img.data,mimeType:img.mediaType||'image/jpeg'}}));
-    const prompt=`You are a compassionate AI medical assistant for cognitive decline monitoring. Analyze this image/video of ${name}.
+    const patient = db.patients.find(p=>p.id===patientId);
+    const name    = patientName || patient?.name || 'the patient';
+    const imageParts = imagesToAnalyze.slice(0,4).map(img=>({inlineData:{data:img.data,mimeType:img.mediaType||'image/jpeg'}}));
+
+    const prompt = `You are a compassionate AI medical assistant for cognitive decline monitoring.
+Analyze this image/video of ${name} carefully.
+
 Patient: ${patient?`${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}, Notes: ${patient.notes}`:'Unknown'}
 ${videoContext?`Context: ${videoContext}`:''}
+
+IMPORTANT — also look specifically for ANY of these safety hazards:
+- Stove, oven, cooktop, flame, or cooking in progress
+- Knife, scissors, or sharp objects being handled
+- Stairs, ladder, or climbing
+- Medications or pill bottles
+- Running taps, bath, shower, or flooding risk
+- Front door, exit, or signs of wandering
+- Wet/slippery floor, unstable surfaces, no footwear
+- Iron or ironing board in use
+- Kettle or boiling water
+- Electrical sockets, exposed wires
+- Cleaning chemicals, bleach, spray bottles
+- Being outside or in garden alone
+
 Return ONLY this JSON no markdown:
-{"observations":[],"cognitiveIndicators":{"confusion":"none|mild|moderate|severe","agitation":"none|mild|moderate|severe","disorientation":"none|mild|moderate|severe","expressionConcern":"none|mild|moderate|severe"},"physicalIndicators":{"posture":"","mobility":"","grooming":"","fatigue":"none|mild|moderate|severe"},"immediateNeeds":[],"recommendations":[],"urgency":"routine|attention|urgent","summary":"","safetyFlags":[]}`;
-    const raw=await geminiVision(imageParts,prompt), clean=cleanJSON(raw), match=clean.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('AI did not return valid JSON');
-    const analysis=JSON.parse(match[0]);
-    logActivity(patientId||'unknown','analysis',`Analysis (${youtubeUrl?'YouTube':'image'}): ${analysis.urgency} — ${(analysis.summary||'').slice(0,80)}`);
-    res.json({ success:true, analysis, modelUsed:activeModel });
+{
+  "observations": [],
+  "cognitiveIndicators": {
+    "confusion": "none|mild|moderate|severe",
+    "agitation": "none|mild|moderate|severe",
+    "disorientation": "none|mild|moderate|severe",
+    "expressionConcern": "none|mild|moderate|severe"
+  },
+  "physicalIndicators": {
+    "posture": "",
+    "mobility": "",
+    "grooming": "",
+    "fatigue": "none|mild|moderate|severe"
+  },
+  "immediateNeeds": [],
+  "recommendations": [],
+  "urgency": "routine|attention|urgent",
+  "summary": "",
+  "safetyFlags": [],
+  "hazardsDetected": [
+    {
+      "hazard": "name of hazard detected e.g. stove, knife, stairs",
+      "description": "what exactly you see",
+      "riskLevel": "low|medium|high|critical",
+      "patientMessage": "A short warm gentle reminder message TO the patient about this hazard (max 2 sentences)",
+      "caregiverMessage": "A clear alert message FOR the caregiver about what was detected"
+    }
+  ]
+}
+
+If no hazards detected, hazardsDetected must be an empty array [].
+Be thorough — patient safety is the priority.`;
+
+    const raw     = await geminiVision(imageParts, prompt);
+    const clean   = cleanJSON(raw);
+    const match   = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('AI did not return valid JSON');
+    const analysis = JSON.parse(match[0]);
+
+    // ── AUTO-SEND ALERTS FOR DETECTED HAZARDS ────────────────
+    const hazards = analysis.hazardsDetected || [];
+    const autoAlerts = [];
+
+    for (const hazard of hazards) {
+      if (!hazard.hazard) continue;
+
+      // Match against our safety rules for richer messages
+      const rule = SAFETY_RULES.find(r =>
+        r.keywords.some(k => hazard.hazard.toLowerCase().includes(k) || (hazard.description||'').toLowerCase().includes(k))
+      );
+
+      const alertMsg = rule
+        ? rule.caregiverAlert
+        : (hazard.caregiverMessage || `Hazard detected: ${hazard.hazard} — ${hazard.description}`);
+
+      const severity = hazard.riskLevel === 'critical' ? 'urgent'
+        : hazard.riskLevel === 'high' ? 'high'
+        : hazard.riskLevel === 'medium' ? 'medium' : 'low';
+
+      // Create caregiver alert
+      const alert = {
+        id:          `ALT${Date.now()}${Math.random().toString(36).slice(2)}`,
+        patientId:   patientId || 'unknown',
+        patientName: patient?.name || 'Patient',
+        type:        'safety_hazard',
+        message:     `⚠️ Safety: ${alertMsg}`,
+        severity,
+        timestamp:   new Date().toISOString(),
+        read:        false
+      };
+      db.alerts.unshift(alert);
+      broadcastAlert({ type: 'new_alert', alert });
+      autoAlerts.push(alert);
+
+      // Add patient reminder message to hazard (use rule message if available)
+      if (rule) hazard.patientMessage = rule.patientReminder;
+    }
+
+    if (autoAlerts.length) saveDB();
+
+    logActivity(
+      patientId||'unknown', 'analysis',
+      `Analysis (${youtubeUrl?'YouTube':'image'}): ${analysis.urgency}${hazards.length ? ` — ⚠️ ${hazards.length} hazard(s): ${hazards.map(h=>h.hazard).join(', ')}` : ' — no hazards'}`
+    );
+
+    res.json({ success:true, analysis, modelUsed:activeModel, autoAlertsSent:autoAlerts.length });
   } catch(e) { console.error('Analysis error:',e.message); res.status(500).json({error:e.message}); }
 });
 

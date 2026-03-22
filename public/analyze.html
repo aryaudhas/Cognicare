@@ -8,22 +8,36 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .upload-zone { border: 2px dashed var(--border); border-radius: 16px; padding: 48px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg-card); }
-    .upload-zone:hover,.upload-zone.drag { border-color: var(--teal); background: var(--teal-light); }
-    .upload-zone .icon { font-size: 48px; margin-bottom:12px; }
-    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: 10px; margin-top: 14px; }
-    .preview-img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 2px solid var(--border); }
-    .json-output { background: #1a2332; color: #a8d5c2; font-family: 'JetBrains Mono',monospace; font-size: 12px; padding: 20px; border-radius: 12px; overflow-x: auto; white-space: pre; max-height: 400px; overflow-y: auto; }
-    .urgency-banner { padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-    .urgency-banner.routine   { background: var(--green-light); border: 1px solid rgba(34,197,94,.3); }
-    .urgency-banner.attention { background: var(--amber-light); border: 1px solid rgba(245,158,11,.3); }
-    .urgency-banner.urgent    { background: var(--red-light);   border: 1px solid rgba(239,68,68,.3); }
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-    .tab { padding: 9px 18px; font-size: 13px; font-weight: 600; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); transition: all .2s; margin-bottom: -1px; }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
-    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
-    .progress-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width .3s; }
+    .upload-zone { border:2px dashed var(--border);border-radius:16px;padding:48px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg-card); }
+    .upload-zone:hover,.upload-zone.drag { border-color:var(--teal);background:var(--teal-light); }
+    .preview-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;margin-top:14px; }
+    .preview-img { width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:2px solid var(--border); }
+    .json-output { background:#1a2332;color:#a8d5c2;font-family:'JetBrains Mono',monospace;font-size:12px;padding:20px;border-radius:12px;overflow-x:auto;white-space:pre;max-height:400px;overflow-y:auto; }
+    .urgency-banner { padding:16px 20px;border-radius:12px;display:flex;align-items:center;gap:14px;margin-bottom:16px; }
+    .urgency-banner.routine   { background:var(--green-light);border:1px solid rgba(34,197,94,.3); }
+    .urgency-banner.attention { background:var(--amber-light);border:1px solid rgba(245,158,11,.3); }
+    .urgency-banner.urgent    { background:var(--red-light);border:1px solid rgba(239,68,68,.3); }
+    .tabs { display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px; }
+    .tab  { padding:9px 18px;font-size:13px;font-weight:600;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--font-body);transition:all .2s;margin-bottom:-1px; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--teal-dark);border-bottom-color:var(--teal); }
+    .progress-bar { height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px; }
+    .progress-fill { height:100%;background:var(--teal);border-radius:2px;transition:width .3s; }
+    .indicator-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+    .indicator-item { display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:white;border-radius:6px;font-size:12px; }
+    .indicator-label { color:var(--text-muted);font-weight:500; }
+    .iv-none     { color:var(--green);font-weight:700; }
+    .iv-mild     { color:var(--amber);font-weight:700; }
+    .iv-moderate { color:#f97316;font-weight:700; }
+    .iv-severe   { color:var(--red);font-weight:700; }
+    .ai-badge { display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace; }
+    .ai-badge.ok  { background:var(--green-light);color:#166534; }
+    .ai-badge.err { background:var(--red-light);color:#991b1b; }
+    .source-toggle { display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px; }
+    .source-btn { flex:1;padding:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--font-body);transition:all .2s;background:var(--bg-input);color:var(--text-muted); }
+    .source-btn.active { background:var(--teal);color:white; }
+    .yt-preview { background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;gap:14px;align-items:center;margin-top:12px; }
+    .yt-thumb { width:120px;height:68px;object-fit:cover;border-radius:8px;flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -32,9 +46,14 @@
 
 <div class="page-wrap">
   <div style="margin-bottom:28px;">
-    <div class="section-label">AI Visual Assessment</div>
-    <h1 class="section-title">Analyze Image or Video</h1>
-    <p style="color:var(--text-muted);margin-top:6px;font-size:14px;">Upload a photo or video of the patient. Our AI will analyze behavioral and physical indicators and provide a structured care report.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="section-label">AI Visual Assessment</div>
+        <h1 class="section-title">Analyze Image or Video</h1>
+      </div>
+      <div id="aiStatusBadge" class="ai-badge err">Checking AI...</div>
+    </div>
+    <p style="color:var(--text-muted);margin-top:6px;font-size:14px;">Upload a photo, video, or paste a YouTube link. AI will analyze behavioral and physical indicators and provide a structured care report.</p>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
@@ -50,81 +69,121 @@
           <select class="form-select" id="patientSelect"></select>
         </div>
 
-        <!-- Context -->
+        <!-- Source toggle -->
         <div class="form-group">
+          <label class="form-label">Source</label>
+          <div class="source-toggle">
+            <button class="source-btn active" onclick="setSource('upload',this)">📁 Upload File</button>
+            <button class="source-btn"        onclick="setSource('youtube',this)">▶️ YouTube URL</button>
+          </div>
+        </div>
+
+        <!-- Upload zone -->
+        <div id="uploadSection">
+          <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleDrop(event)">
+            <div style="font-size:40px;margin-bottom:10px;">📷</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:5px;">Drop image or video here</div>
+            <div style="font-size:13px;color:var(--text-muted);">or click to browse — JPG, PNG, MP4, MOV</div>
+          </div>
+          <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none" onchange="handleFiles(this.files)">
+          <div class="preview-grid" id="previewGrid"></div>
+          <div id="progressWrap" style="display:none;margin-top:12px;">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;" id="progressLabel">Processing...</div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <!-- YouTube section -->
+        <div id="youtubeSection" style="display:none;">
+          <div class="form-group" style="margin-bottom:8px;">
+            <label class="form-label">YouTube URL</label>
+            <input type="text" class="form-input" id="ytUrl" placeholder="https://youtube.com/watch?v=..." oninput="clearYtPreview()">
+          </div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:8px;" onclick="loadYouTube()">
+            🔍 Load Video
+          </button>
+          <div id="ytPreview" style="display:none;" class="yt-preview">
+            <img id="ytThumb" class="yt-thumb" src="" alt="thumbnail">
+            <div>
+              <div style="font-weight:600;font-size:13px;" id="ytTitle">—</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:3px;" id="ytAuthor">—</div>
+              <div style="font-size:11px;color:var(--teal-dark);margin-top:4px;" id="ytFrameCount">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Context -->
+        <div class="form-group" style="margin-top:14px;">
           <label class="form-label">Additional Context (optional)</label>
           <textarea class="form-textarea" id="contextInput" placeholder="e.g. Patient seemed confused this morning, hasn't eaten yet..."></textarea>
         </div>
 
-        <!-- Upload zone -->
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
-          <div class="icon">📷</div>
-          <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;">Drop image or video here</div>
-          <div style="font-size:13px;color:var(--text-muted);">or click to browse — JPG, PNG, MP4, MOV</div>
-        </div>
-        <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-
-        <!-- Previews -->
-        <div class="preview-grid" id="previewGrid"></div>
-
-        <!-- Progress -->
-        <div id="progressWrap" style="display:none;margin-top:14px;">
-          <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;" id="progressLabel">Extracting frames...</div>
-          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-        </div>
-
-        <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:13px;" id="analyzeBtn" onclick="runAnalysis()" disabled>
+        <button class="btn btn-primary" style="width:100%;padding:13px;" id="analyzeBtn" onclick="runAnalysis()" disabled>
           🔍 Analyze with AI
         </button>
       </div>
     </div>
 
-    <!-- Right: Results panel -->
+    <!-- Right: Results -->
     <div>
       <div class="card card-pad" id="resultsPanel">
         <div style="font-family:var(--font-display);font-size:18px;margin-bottom:16px;">Analysis Results</div>
+
         <div id="resultsEmpty" style="text-align:center;padding:60px 20px;color:var(--text-dim);">
           <div style="font-size:48px;margin-bottom:12px;">🔍</div>
-          <div>Upload an image or video to begin analysis</div>
+          <div>Upload media or paste a YouTube link to begin analysis</div>
         </div>
-        <div id="resultsContent" style="display:none;">
 
-          <!-- Urgency banner -->
+        <div id="resultsContent" style="display:none;">
           <div class="urgency-banner" id="urgencyBanner">
             <div style="font-size:28px;" id="urgencyIcon">✅</div>
             <div>
               <div style="font-weight:700;font-size:15px;" id="urgencyLabel">Routine</div>
               <div style="font-size:12px;color:var(--text-muted);">No immediate action required</div>
             </div>
+            <div style="margin-left:auto;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;" id="resultAiUsed"></div>
           </div>
 
-          <!-- Tabs: Summary | Indicators | Recommendations | JSON -->
           <div class="tabs">
             <button class="tab active" onclick="showTab('summary',this)">Summary</button>
+            <button class="tab" id="hazardsTab" onclick="showTab('hazards',this)">⚠️ Hazards <span id="hazardCount" style="display:none;background:var(--red);color:white;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px;"></span></button>
             <button class="tab" onclick="showTab('indicators',this)">Indicators</button>
             <button class="tab" onclick="showTab('recommendations',this)">Actions</button>
-            <button class="tab" onclick="showTab('json',this)">Raw JSON</button>
+            <button class="tab" onclick="showTab('json',this)">JSON</button>
           </div>
 
           <div id="tab-summary">
-            <div style="font-size:14px;line-height:1.7;color:var(--text);" id="resultSummary"></div>
-            <div id="safetyFlagsWrap" style="margin-top:16px;display:none;">
+            <div style="font-size:14px;line-height:1.7;color:var(--text);margin-bottom:14px;" id="resultSummary"></div>
+            <div id="safetyFlagsWrap" style="display:none;margin-bottom:14px;">
               <div style="font-weight:700;color:var(--red);margin-bottom:8px;">⚠ Safety Flags</div>
               <div id="safetyFlags"></div>
             </div>
-            <div id="needsWrap" style="margin-top:16px;">
-              <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--text-muted);">IMMEDIATE NEEDS</div>
+            <div>
+              <div style="font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Immediate Needs</div>
               <div id="immediateNeeds"></div>
             </div>
           </div>
 
+          <!-- HAZARDS TAB -->
+          <div id="tab-hazards" style="display:none;">
+            <div id="noHazards" style="text-align:center;padding:30px;color:var(--green);">
+              <div style="font-size:36px;margin-bottom:8px;">✅</div>
+              <div style="font-weight:600;">No hazards detected</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Environment appears safe</div>
+            </div>
+            <div id="hazardsList"></div>
+          </div>
+
           <div id="tab-indicators" style="display:none;">
-            <div style="margin-bottom:12px;">
-              <div class="section-label" style="margin-bottom:8px;">Cognitive</div>
+            <div style="margin-bottom:14px;">
+              <div style="font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Cognitive</div>
               <div class="indicator-grid" id="cognitiveGrid"></div>
             </div>
-            <div style="margin-bottom:12px;">
-              <div class="section-label" style="margin-bottom:8px;">Physical</div>
+            <div>
+              <div style="font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Physical</div>
               <div id="physicalGrid"></div>
             </div>
           </div>
@@ -136,7 +195,6 @@
           <div id="tab-json" style="display:none;">
             <div class="json-output" id="jsonOutput"></div>
           </div>
-
         </div>
       </div>
     </div>
@@ -147,198 +205,345 @@
 <div id="toast"></div>
 <script>
 let uploadedImages = [];
+let youtubeUrl     = null;
+let currentSource  = 'upload';
+
+// Check AI status on load
+async function checkAIStatus() {
+  try {
+    const res  = await apiFetch('/api/ai-status');
+    const data = await res.json();
+    const badge = document.getElementById('aiStatusBadge');
+    if (data.hasAny) {
+      badge.className = 'ai-badge ok';
+      badge.textContent = `✓ ${data.active}`;
+    } else {
+      badge.className = 'ai-badge err';
+      badge.textContent = '✗ No API key set';
+      showToast('No AI key set. Add GEMINI_API_KEY or GROQ_API_KEY in your environment.', 'error');
+    }
+  } catch { }
+}
 
 // Load patients
-async function loadPatients(){
-  try{
-    const res=await apiFetch('/api/patients');
-    const patients=await res.json();
-    document.getElementById('patientSelect').innerHTML=patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  }catch{ document.getElementById('patientSelect').innerHTML='<option value="P001">Margaret Thompson</option>'; }
+async function loadPatients() {
+  try {
+    const res      = await apiFetch('/api/patients');
+    const patients = await res.json();
+    document.getElementById('patientSelect').innerHTML =
+      patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  } catch {
+    document.getElementById('patientSelect').innerHTML = '<option value="P001">Margaret Thompson</option>';
+  }
 }
-loadPatients();
+
+// Source toggle
+function setSource(source, btn) {
+  currentSource = source;
+  document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('uploadSection').style.display  = source === 'upload'  ? 'block' : 'none';
+  document.getElementById('youtubeSection').style.display = source === 'youtube' ? 'block' : 'none';
+  uploadedImages = [];
+  youtubeUrl     = null;
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('previewGrid').innerHTML = '';
+}
+
+// YouTube
+function clearYtPreview() {
+  document.getElementById('ytPreview').style.display = 'none';
+  youtubeUrl = null;
+  document.getElementById('analyzeBtn').disabled = true;
+}
+
+async function loadYouTube() {
+  const url = document.getElementById('ytUrl').value.trim();
+  if (!url) { showToast('Paste a YouTube URL first', 'error'); return; }
+
+  const btn = document.querySelector('[onclick="loadYouTube()"]');
+  btn.textContent = 'Loading...'; btn.disabled = true;
+
+  try {
+    const res  = await apiFetch('/api/youtube-info', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    youtubeUrl = url;
+    document.getElementById('ytThumb').src        = `https://img.youtube.com/vi/${data.videoId}/hqdefault.jpg`;
+    document.getElementById('ytTitle').textContent  = data.metadata.title;
+    document.getElementById('ytAuthor').textContent = data.metadata.author;
+    document.getElementById('ytFrameCount').textContent = `${data.images.length} thumbnail frame${data.images.length !== 1 ? 's' : ''} extracted`;
+    document.getElementById('ytPreview').style.display = 'flex';
+    document.getElementById('analyzeBtn').disabled = false;
+    showToast('Video loaded successfully', 'success');
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+  } finally {
+    btn.textContent = '🔍 Load Video'; btn.disabled = false;
+  }
+}
 
 // File handling
-function handleDrop(e){
+function handleDrop(e) {
   e.preventDefault();
   document.getElementById('uploadZone').classList.remove('drag');
   handleFiles(e.dataTransfer.files);
 }
 
-function handleFiles(files){
-  uploadedImages=[];
-  document.getElementById('previewGrid').innerHTML='';
-  const arr=[...files];
-  let processed=0;
+function handleFiles(files) {
+  uploadedImages = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  const arr = [...files];
+  let processed = 0;
 
-  arr.forEach(file=>{
-    if(file.type.startsWith('image/')){
-      const reader=new FileReader();
-      reader.onload=e=>{
-        const b64=e.target.result.split(',')[1];
-        uploadedImages.push({data:b64,mediaType:file.type});
+  arr.forEach(file => {
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const b64 = e.target.result.split(',')[1];
+        uploadedImages.push({ data: b64, mediaType: file.type });
         addPreview(e.target.result);
         processed++;
-        if(processed===arr.length) document.getElementById('analyzeBtn').disabled=false;
+        if (processed === arr.length) document.getElementById('analyzeBtn').disabled = false;
       };
       reader.readAsDataURL(file);
-    } else if(file.type.startsWith('video/')){
-      extractFrames(file, arr.length===1 ? 4 : 2, frames=>{
-        frames.forEach(f=>{
-          uploadedImages.push({data:f.split(',')[1],mediaType:'image/jpeg'});
+    } else if (file.type.startsWith('video/')) {
+      extractFrames(file, 4, frames => {
+        frames.forEach(f => {
+          uploadedImages.push({ data: f.split(',')[1], mediaType: 'image/jpeg' });
           addPreview(f);
         });
         processed++;
-        if(processed===arr.length) document.getElementById('analyzeBtn').disabled=false;
+        if (processed === arr.length) document.getElementById('analyzeBtn').disabled = false;
       });
     }
   });
 }
 
-function addPreview(src){
-  const img=document.createElement('img');
-  img.src=src; img.className='preview-img';
+function addPreview(src) {
+  const img = document.createElement('img');
+  img.src = src; img.className = 'preview-img';
   document.getElementById('previewGrid').appendChild(img);
 }
 
-// Extract frames from video using canvas
-function extractFrames(videoFile, count, callback){
-  document.getElementById('progressWrap').style.display='block';
-  document.getElementById('progressLabel').textContent='Extracting video frames...';
-  const url=URL.createObjectURL(videoFile);
-  const video=document.createElement('video');
-  video.src=url; video.muted=true;
-  const frames=[];
-  video.onloadedmetadata=()=>{
-    const duration=video.duration;
-    let captured=0;
-    const times=Array.from({length:count},(_,i)=>(duration/(count+1))*(i+1));
-    const canvas=document.createElement('canvas');
-    const ctx=canvas.getContext('2d');
-    function captureNext(){
-      if(captured>=count){ URL.revokeObjectURL(url); callback(frames); return; }
-      video.currentTime=times[captured];
+function extractFrames(videoFile, count, callback) {
+  document.getElementById('progressWrap').style.display = 'block';
+  const url    = URL.createObjectURL(videoFile);
+  const video  = document.createElement('video');
+  video.src = url; video.muted = true;
+  const frames = [];
+  video.onloadedmetadata = () => {
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d');
+    const times  = Array.from({ length: count }, (_, i) => (video.duration / (count + 1)) * (i + 1));
+    let captured = 0;
+    function next() {
+      if (captured >= count) { URL.revokeObjectURL(url); callback(frames); return; }
+      video.currentTime = times[captured];
     }
-    video.onseeked=()=>{
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-      ctx.drawImage(video,0,0);
-      frames.push(canvas.toDataURL('image/jpeg',0.8));
+    video.onseeked = () => {
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      frames.push(canvas.toDataURL('image/jpeg', 0.8));
       captured++;
-      document.getElementById('progressFill').style.width=`${(captured/count)*100}%`;
-      document.getElementById('progressLabel').textContent=`Extracting frame ${captured}/${count}...`;
-      captureNext();
+      document.getElementById('progressFill').style.width = `${(captured / count) * 100}%`;
+      document.getElementById('progressLabel').textContent = `Extracting frame ${captured}/${count}...`;
+      next();
     };
-    captureNext();
+    next();
   };
   video.load();
 }
 
 // Run analysis
-async function runAnalysis(){
-  if(!uploadedImages.length){ showToast('Please upload an image first','error'); return; }
-  const btn=document.getElementById('analyzeBtn');
-  btn.disabled=true; btn.textContent='🧠 Analyzing...';
-  document.getElementById('progressWrap').style.display='block';
-  document.getElementById('progressLabel').textContent='Sending to AI...';
-  document.getElementById('progressFill').style.width='60%';
+async function runAnalysis() {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '🧠 Analyzing...';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressLabel').textContent = 'Sending to AI...';
+  document.getElementById('progressFill').style.width = '50%';
 
-  try{
-    const patientId=document.getElementById('patientSelect').value;
-    const context=document.getElementById('contextInput').value;
-    const res=await apiFetch('/api/analyze',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({images:uploadedImages,patientId,context})
+  try {
+    const patientId = document.getElementById('patientSelect').value;
+    const context   = document.getElementById('contextInput').value;
+
+    const body = { patientId, context };
+    if (currentSource === 'youtube' && youtubeUrl) {
+      body.youtubeUrl = youtubeUrl;
+    } else {
+      if (!uploadedImages.length) { showToast('Upload an image first', 'error'); return; }
+      body.images = uploadedImages;
+    }
+
+    const res  = await apiFetch('/api/analyze', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-    const data=await res.json();
-    if(!data.success) throw new Error(data.error||'Analysis failed');
-    document.getElementById('progressFill').style.width='100%';
-    renderResults(data.analysis, data.raw);
-    showToast('Analysis complete','success');
-  }catch(e){
-    showToast(`Error: ${e.message}`,'error');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Analysis failed');
+
+    document.getElementById('progressFill').style.width = '100%';
+    renderResults(data.analysis, data.aiUsed);
+
+    // Show hazard toast if any detected
+    const hazardCount = data.analysis.hazardsDetected?.length || 0;
+    if (hazardCount > 0) {
+      showToast(`⚠️ ${hazardCount} safety hazard${hazardCount>1?'s':''} detected — caregiver alerted!`, 'error');
+    } else {
+      showToast('Analysis complete', 'success');
+    }
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
     console.error(e);
-  }finally{
-    btn.disabled=false; btn.textContent='🔍 Analyze with AI';
-    setTimeout(()=>{ document.getElementById('progressWrap').style.display='none'; document.getElementById('progressFill').style.width='0%'; },1000);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 Analyze with AI';
+    setTimeout(() => {
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('progressFill').style.width = '0%';
+    }, 1000);
   }
 }
 
-const URGENCY_CONFIG={
-  routine:   {icon:'✅',label:'Routine — No Immediate Action',  cls:'routine'},
-  attention: {icon:'⚠️',label:'Needs Attention',                cls:'attention'},
-  urgent:    {icon:'🚨',label:'Urgent — Act Now',               cls:'urgent'}
+const URGENCY = {
+  routine:   { icon:'✅', label:'Routine — No Immediate Action', cls:'routine'   },
+  attention: { icon:'⚠️', label:'Needs Attention',               cls:'attention' },
+  urgent:    { icon:'🚨', label:'Urgent — Act Now',              cls:'urgent'    }
 };
+const IND_CLS    = { none:'iv-none', mild:'iv-mild', moderate:'iv-moderate', severe:'iv-severe' };
+const RISK_COLORS = { low:'var(--blue)', medium:'var(--amber)', high:'var(--red)', critical:'#7f1d1d' };
+const RISK_BG     = { low:'#eff6ff', medium:'#fff7ed', high:'#fef2f2', critical:'#fef2f2' };
 
-const INDICATOR_COLORS={none:'iv-none',mild:'iv-mild',moderate:'iv-moderate',severe:'iv-severe'};
+function renderResults(a, aiUsed) {
+  document.getElementById('resultsEmpty').style.display   = 'none';
+  document.getElementById('resultsContent').style.display = 'block';
 
-function renderResults(a, raw){
-  document.getElementById('resultsEmpty').style.display='none';
-  document.getElementById('resultsContent').style.display='block';
+  const uc = URGENCY[a.urgency] || URGENCY.routine;
+  document.getElementById('urgencyBanner').className = `urgency-banner ${uc.cls}`;
+  document.getElementById('urgencyIcon').textContent  = uc.icon;
+  document.getElementById('urgencyLabel').textContent = uc.label;
+  document.getElementById('resultAiUsed').textContent = aiUsed || '';
 
-  // Urgency
-  const uc=URGENCY_CONFIG[a.urgency]||URGENCY_CONFIG.routine;
-  const banner=document.getElementById('urgencyBanner');
-  banner.className=`urgency-banner ${uc.cls}`;
-  document.getElementById('urgencyIcon').textContent=uc.icon;
-  document.getElementById('urgencyLabel').textContent=uc.label;
+  document.getElementById('resultSummary').textContent = a.summary || 'No summary.';
 
-  // Summary
-  document.getElementById('resultSummary').textContent=a.summary||'No summary available.';
-
-  // Safety flags
-  if(a.safetyFlags?.length){
-    document.getElementById('safetyFlagsWrap').style.display='block';
-    document.getElementById('safetyFlags').innerHTML=a.safetyFlags.map(f=>`<div class="badge badge-red" style="margin-bottom:6px;display:flex;">⚠ ${f}</div>`).join('');
+  if (a.safetyFlags?.length) {
+    document.getElementById('safetyFlagsWrap').style.display = 'block';
+    document.getElementById('safetyFlags').innerHTML =
+      a.safetyFlags.map(f => `<div class="badge badge-red" style="margin-bottom:6px;display:flex;">⚠ ${f}</div>`).join('');
   }
 
-  // Immediate needs
-  document.getElementById('immediateNeeds').innerHTML=(a.immediateNeeds||[]).map(n=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--teal-light);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--teal-dark);font-weight:500;">
-      <span>→</span>${n}
-    </div>`).join('')||'<div style="color:var(--text-dim);font-size:13px;">No immediate needs identified.</div>';
+  document.getElementById('immediateNeeds').innerHTML =
+    (a.immediateNeeds || []).map(n =>
+      `<div style="padding:8px 12px;background:var(--teal-light);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--teal-dark);font-weight:500;">→ ${n}</div>`
+    ).join('') || '<div style="color:var(--text-dim);font-size:13px;">None identified.</div>';
 
-  // Cognitive indicators
-  const cog=a.cognitiveIndicators||{};
-  document.getElementById('cognitiveGrid').innerHTML=Object.entries(cog).map(([k,v])=>`
-    <div class="indicator-item">
-      <span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span>
-      <span class="indicator-value ${INDICATOR_COLORS[v?.toLowerCase()]||''}">${v||'—'}</span>
-    </div>`).join('');
+  document.getElementById('cognitiveGrid').innerHTML =
+    Object.entries(a.cognitiveIndicators || {}).map(([k, v]) =>
+      `<div class="indicator-item"><span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span><span class="${IND_CLS[v?.toLowerCase()] || ''}">${v||'—'}</span></div>`
+    ).join('');
 
-  // Physical indicators
-  const phys=a.physicalIndicators||{};
-  document.getElementById('physicalGrid').innerHTML=Object.entries(phys).map(([k,v])=>`
-    <div class="indicator-item" style="margin-bottom:6px;">
-      <span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span>
-      <span class="indicator-value" style="font-size:12px;color:var(--text);">${v||'—'}</span>
-    </div>`).join('');
+  document.getElementById('physicalGrid').innerHTML =
+    Object.entries(a.physicalIndicators || {}).map(([k, v]) =>
+      `<div class="indicator-item" style="margin-bottom:6px;"><span class="indicator-label">${k.replace(/([A-Z])/g,' $1').trim()}</span><span style="font-size:12px;color:var(--text);">${v||'—'}</span></div>`
+    ).join('');
 
-  // Recommendations
-  document.getElementById('recommendationsList').innerHTML=(a.recommendations||[]).map((r,i)=>`
-    <div style="display:flex;gap:12px;padding:12px 14px;background:var(--bg-panel);border-radius:8px;margin-bottom:8px;border:1px solid var(--border);">
-      <div style="width:24px;height:24px;background:var(--teal);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${i+1}</div>
-      <div style="font-size:13px;line-height:1.6;color:var(--text);">${r}</div>
-    </div>`).join('');
+  document.getElementById('recommendationsList').innerHTML =
+    (a.recommendations || []).map((r, i) =>
+      `<div style="display:flex;gap:12px;padding:12px 14px;background:var(--bg-panel);border-radius:8px;margin-bottom:8px;border:1px solid var(--border);">
+        <div style="width:24px;height:24px;background:var(--teal);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${i+1}</div>
+        <div style="font-size:13px;line-height:1.6;">${r}</div>
+      </div>`
+    ).join('');
 
-  // JSON
-  document.getElementById('jsonOutput').textContent=JSON.stringify(a,null,2);
+  // ── HAZARDS ──────────────────────────────────────────────
+  const hazards = a.hazardsDetected || [];
+  const hazardTab = document.getElementById('hazardsTab');
+  const hazardCount = document.getElementById('hazardCount');
+
+  if (hazards.length) {
+    hazardCount.textContent = hazards.length;
+    hazardCount.style.display = 'inline';
+    hazardTab.style.color = 'var(--red)';
+    document.getElementById('noHazards').style.display = 'none';
+    document.getElementById('hazardsList').innerHTML = hazards.map(h => `
+      <div style="background:${RISK_BG[h.riskLevel]||'#fef2f2'};border:1px solid ${RISK_COLORS[h.riskLevel]||'var(--red)'};border-radius:12px;padding:16px;margin-bottom:12px;">
+
+        <!-- Hazard header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="font-size:24px;">${getHazardIcon(h.hazard)}</div>
+          <div style="flex:1;">
+            <div style="font-weight:800;font-size:15px;color:var(--text);text-transform:capitalize;">${h.hazard}</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${RISK_COLORS[h.riskLevel]||'var(--red)'};">${h.riskLevel} risk</div>
+          </div>
+        </div>
+
+        <!-- What was detected -->
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.55;">${h.description}</div>
+
+        <!-- Patient reminder -->
+        <div style="background:white;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:3px solid var(--teal);">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-dark);margin-bottom:4px;">💬 Reminder to Patient</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.5;">${h.patientMessage || '—'}</div>
+        </div>
+
+        <!-- Caregiver alert -->
+        <div style="background:white;border-radius:8px;padding:10px 14px;border-left:3px solid ${RISK_COLORS[h.riskLevel]||'var(--red)'};">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${RISK_COLORS[h.riskLevel]||'var(--red)'};margin-bottom:4px;">🚨 Alert Sent to Caregiver</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.5;">${h.caregiverMessage || '—'}</div>
+        </div>
+      </div>`).join('');
+
+    // Auto-switch to hazards tab if any found
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    hazardTab.classList.add('active');
+    showTab('hazards', hazardTab);
+  } else {
+    hazardCount.style.display = 'none';
+    hazardTab.style.color = '';
+    document.getElementById('noHazards').style.display = 'block';
+    document.getElementById('hazardsList').innerHTML = '';
+  }
+
+  document.getElementById('jsonOutput').textContent = JSON.stringify(a, null, 2);
 }
 
-function showTab(name, btn){
-  ['summary','indicators','recommendations','json'].forEach(t=>{
-    document.getElementById('tab-'+t).style.display=t===name?'block':'none';
+function getHazardIcon(hazard) {
+  const h = (hazard||'').toLowerCase();
+  if (h.includes('stove')||h.includes('oven')||h.includes('cook'))  return '🔥';
+  if (h.includes('knife')||h.includes('sharp')||h.includes('blade')) return '🔪';
+  if (h.includes('stair')||h.includes('ladder'))                      return '🪜';
+  if (h.includes('medication')||h.includes('pill'))                   return '💊';
+  if (h.includes('water')||h.includes('tap')||h.includes('bath'))    return '🚿';
+  if (h.includes('door')||h.includes('wander')||h.includes('exit'))  return '🚪';
+  if (h.includes('fall')||h.includes('slip'))                         return '🛑';
+  if (h.includes('iron'))                                              return '👕';
+  if (h.includes('kettle')||h.includes('boil'))                       return '☕';
+  if (h.includes('electr'))                                            return '⚡';
+  if (h.includes('clean')||h.includes('chem'))                        return '🧴';
+  if (h.includes('outside')||h.includes('garden'))                    return '🏡';
+  return '⚠️';
+}
+
+function showTab(name, btn) {
+  ['summary','hazards','indicators','recommendations','json'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === name ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
 let _tt;
-function showToast(msg,type='success'){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className='show '+(type||'success');
-  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3500);
+function showToast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show '+(type||'success');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.className='', 3500);
 }
+
+checkAIStatus();
+loadPatients();
 </script>
 </body>
 </html>

@@ -7,6 +7,77 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Live alert notification banner */
+    .alert-banner {
+      position: fixed; top: 70px; right: 20px; z-index: 8000;
+      width: 360px; background: white; border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.18);
+      border-left: 5px solid var(--red);
+      overflow: hidden; animation: slideInRight .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    .alert-banner.medium { border-left-color: var(--amber); }
+    .alert-banner.low    { border-left-color: var(--blue); }
+
+    .ab-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px 10px; background: #fef2f2;
+    }
+    .alert-banner.medium .ab-header { background: #fff7ed; }
+    .alert-banner.low    .ab-header { background: #eff6ff; }
+
+    .ab-icon  { font-size: 26px; }
+    .ab-title { font-weight: 800; font-size: 14px; color: var(--text); flex:1; }
+    .ab-close { background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);padding:2px 6px;border-radius:4px; }
+    .ab-close:hover { background:var(--bg-input); }
+    .ab-body  { padding: 10px 16px 14px; }
+    .ab-patient{ font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:4px;letter-spacing:.04em; }
+    .ab-msg   { font-size:13px;color:var(--text);line-height:1.5; }
+    .ab-time  { font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:6px; }
+    .ab-actions{ display:flex;gap:8px;padding:0 16px 14px; }
+    .ab-btn-ack{ flex:1;padding:8px;background:var(--teal);color:white;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-body); }
+    .ab-btn-ack:hover { background:var(--teal-dark); }
+
+    @keyframes slideInRight { from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)} }
+
+    /* Alert bell icon in nav area */
+    .alert-bell {
+      position: fixed; bottom: 28px; right: 28px; z-index: 7000;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--teal); color: white; border: none;
+      font-size: 22px; cursor: pointer; box-shadow: 0 4px 20px var(--teal-glow);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s;
+    }
+    .alert-bell:hover { transform: scale(1.1); }
+    .alert-bell-badge {
+      position: absolute; top: -4px; right: -4px;
+      width: 20px; height: 20px; background: var(--red); color: white;
+      border-radius: 50%; font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid white;
+    }
+
+    /* Alert history panel */
+    .alert-history-panel {
+      position: fixed; bottom: 96px; right: 28px; z-index: 7000;
+      width: 360px; background: white; border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.18); border: 1px solid var(--border);
+      max-height: 400px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .ahp-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display:flex;align-items:center;justify-content:space-between; }
+    .ahp-title  { font-weight: 700; font-size: 14px; }
+    .ahp-list   { overflow-y: auto; flex: 1; }
+    .ahp-item   { padding: 12px 16px; border-bottom: 1px solid var(--border); display:flex;gap:10px;align-items:flex-start; }
+    .ahp-item:last-child { border-bottom: none; }
+    .ahp-item.unread { background: #fef2f2; }
+    .ahp-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .ahp-msg    { font-size: 12px; color: var(--text); line-height: 1.4; }
+    .ahp-meta   { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-top: 3px; }
+    .ahp-footer { padding: 10px 16px; border-top: 1px solid var(--border); }
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  </style>
 </head>
 <body>
 <script src="config.js"></script>
@@ -19,31 +90,19 @@
     <div class="section-label">Overview</div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <h1 class="section-title">Good <span id="timeOfDay">morning</span>, Caregiver</h1>
-      <div style="font-size:13px;color:var(--text-muted);font-family:var(--font-mono);" id="dashClock"></div>
+      <div style="font-size:13px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="dashClock"></div>
     </div>
   </div>
 
   <!-- Stat cards -->
   <div class="stat-grid" style="animation:fadeUp .5s .1s ease both;">
-    <div class="stat-card teal">
-      <div class="stat-icon">👤</div>
-      <div class="stat-num" id="s-patients">—</div>
-      <div class="stat-label">Patients Monitored</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="stat-icon">🔔</div>
-      <div class="stat-num" id="s-reminders">—</div>
-      <div class="stat-label">Active Reminders</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="stat-icon">📊</div>
-      <div class="stat-num" id="s-today">—</div>
-      <div class="stat-label">Events Today</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-icon">🧠</div>
-      <div class="stat-num" id="s-analyses">—</div>
-      <div class="stat-label">AI Analyses Run</div>
+    <div class="stat-card teal"><div class="stat-icon">👤</div><div class="stat-num" id="s-patients">—</div><div class="stat-label">Patients Monitored</div></div>
+    <div class="stat-card amber"><div class="stat-icon">🔔</div><div class="stat-num" id="s-reminders">—</div><div class="stat-label">Active Reminders</div></div>
+    <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-num" id="s-today">—</div><div class="stat-label">Events Today</div></div>
+    <div class="stat-card" style="border-color:var(--red-light);" id="alertCard">
+      <div class="stat-icon">🚨</div>
+      <div class="stat-num" id="s-alerts" style="color:var(--red);">0</div>
+      <div class="stat-label">Unread Alerts</div>
     </div>
   </div>
 
@@ -53,28 +112,18 @@
     <!-- Today's reminders -->
     <div class="card card-pad">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div>
-          <div class="section-label">Scheduled</div>
-          <div style="font-family:var(--font-display);font-size:18px;">Today's Reminders</div>
-        </div>
+        <div><div class="section-label" style="margin-bottom:2px;">Scheduled</div><div style="font-family:var(--font-display);font-size:18px;">Today's Reminders</div></div>
         <a href="reminders.html" class="btn btn-secondary" style="font-size:12px;padding:7px 14px;">Manage →</a>
       </div>
-      <div id="todayReminders">
-        <div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div>
-      </div>
+      <div id="todayReminders"><div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div></div>
     </div>
 
     <!-- Activity feed -->
     <div class="card card-pad">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div>
-          <div class="section-label">Recent</div>
-          <div style="font-family:var(--font-display);font-size:18px;">Activity Log</div>
-        </div>
+        <div><div class="section-label" style="margin-bottom:2px;">Recent</div><div style="font-family:var(--font-display);font-size:18px;">Activity Log</div></div>
       </div>
-      <div id="activityFeed">
-        <div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div>
-      </div>
+      <div id="activityFeed"><div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div></div>
     </div>
 
   </div>
@@ -83,102 +132,244 @@
   <div style="margin-top:20px;animation:fadeUp .5s .3s ease both;">
     <div class="section-label" style="margin-bottom:14px;">Quick Actions</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
-      <a href="patient.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:32px;margin-bottom:8px;">👁️</div>
-        <div style="font-weight:600;font-size:14px;color:var(--text);">Patient View</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Open patient interface</div>
-      </a>
-      <a href="analyze.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:32px;margin-bottom:8px;">🔍</div>
-        <div style="font-weight:600;font-size:14px;color:var(--text);">Analyze Image</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">AI visual assessment</div>
-      </a>
-      <a href="chat.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:32px;margin-bottom:8px;">💬</div>
-        <div style="font-weight:600;font-size:14px;color:var(--text);">AI Assistant</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Ask care questions</div>
-      </a>
-      <a href="reminders.html" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:32px;margin-bottom:8px;">🔔</div>
-        <div style="font-weight:600;font-size:14px;color:var(--text);">Add Reminder</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Schedule care tasks</div>
-      </a>
+      <a href="patient.html"   style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">👁️</div><div style="font-weight:600;font-size:14px;">Patient View</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Open patient interface</div></a>
+      <a href="analyze.html"   style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">🔍</div><div style="font-weight:600;font-size:14px;">Analyze Image</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">AI visual assessment</div></a>
+      <a href="jsoninput.html" style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">📋</div><div style="font-weight:600;font-size:14px;">JSON Data</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Analyze health data</div></a>
+      <a href="chat.html"      style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">💬</div><div style="font-weight:600;font-size:14px;">AI Assistant</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ask care questions</div></a>
     </div>
   </div>
 
 </div>
 
+<!-- Floating alert bell -->
+<button class="alert-bell" id="alertBell" onclick="toggleAlertPanel()" title="View alerts">
+  🔔
+  <div class="alert-bell-badge" id="alertBadge" style="display:none;">0</div>
+</button>
+
+<!-- Alert history panel (hidden by default) -->
+<div id="alertPanel" style="display:none;" class="alert-history-panel">
+  <div class="ahp-header">
+    <div class="ahp-title">🚨 Patient Alerts</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="clearAllAlerts()" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;font-family:var(--font-body);">Clear all</button>
+      <button onclick="toggleAlertPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+  </div>
+  <div class="ahp-list" id="alertPanelList">
+    <div style="text-align:center;padding:30px;color:var(--text-dim);">No alerts yet.</div>
+  </div>
+  <div class="ahp-footer">
+    <a href="patient.html" class="btn btn-primary" style="width:100%;justify-content:center;font-size:12px;padding:8px;">Open Patient View →</a>
+  </div>
+</div>
+
 <div id="toast"></div>
-<style>
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-</style>
+
 <script>
-const TYPE_ICONS = {meal:'🍽️',medication:'💊',bathroom:'🚽',hydration:'💧',activity:'🚶',social:'👥',sleep:'😴',grooming:'🪥'};
-const TYPE_COLORS = {meal:'#fef3c7',medication:'#fee2e2',bathroom:'#dbeafe',hydration:'#ccfbf1',activity:'#dcfce7',social:'#f3e8ff',sleep:'#e0e7ff',grooming:'#fce7f3'};
-const ACT_COLORS = {analysis:'var(--teal)',chat:'var(--blue)',reminder_sent:'var(--amber)',alert:'var(--red)'};
+const TYPE_ICONS={meal:'🍽️',medication:'💊',bathroom:'🚽',hydration:'💧',activity:'🚶',social:'👥',sleep:'😴',grooming:'🪥'};
+const ACT_COLORS={analysis:'var(--teal)',chat:'var(--blue)',reminder_sent:'var(--amber)',alert:'var(--red)',patient_alert:'var(--red)',json_analysis:'var(--purple)'};
+const SEV_COLORS={urgent:'var(--red)',high:'var(--red)',medium:'var(--amber)',low:'var(--blue)'};
+const SEV_ICONS ={urgent:'🚨',high:'🚨',medium:'⚠️',low:'ℹ️'};
 
-function updateClock(){
-  const now = new Date();
-  const h = now.getHours();
-  document.getElementById('dashClock').textContent = now.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  document.getElementById('timeOfDay').textContent = h<12?'morning':h<17?'afternoon':'evening';
+let alertPanelOpen = false;
+let unreadCount    = 0;
+let alertBanners   = [];
+
+// Clock
+function tick(){
+  const now=new Date(), h=now.getHours();
+  document.getElementById('dashClock').textContent=now.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  document.getElementById('timeOfDay').textContent=h<12?'morning':h<17?'afternoon':'evening';
 }
-updateClock(); setInterval(updateClock,1000);
+tick(); setInterval(tick,1000);
 
-async function loadDashboard(){
+// ── SSE: Listen for real-time patient alerts ──────────────────
+function connectSSE(){
+  const es = new EventSource(API_BASE + '/api/alerts/stream');
+
+  es.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === 'new_alert') {
+      showAlertBanner(data.alert);
+      addAlertToPanel(data.alert);
+      updateAlertBadge(++unreadCount);
+      updateAlertCount();
+      playAlertSound(data.alert.severity);
+      // Browser notification
+      if (Notification.permission === 'granted') {
+        new Notification(`🚨 ${data.alert.patientName} needs help!`, {
+          body: data.alert.message,
+          icon: '🧠'
+        });
+      }
+    }
+
+    if (data.type === 'history') {
+      data.alerts.forEach(a => addAlertToPanel(a));
+      const unread = data.alerts.filter(a => !a.read).length;
+      if (unread) updateAlertBadge(unread);
+    }
+  };
+
+  es.onerror = () => {
+    // Reconnect after 5 seconds
+    setTimeout(connectSSE, 5000);
+  };
+}
+
+function playAlertSound(severity) {
   try {
-    const [statsRes, remRes, actRes] = await Promise.all([
-      apiFetch('/api/stats'),
-      apiFetch('/api/reminders'),
-      apiFetch('/api/activity?limit=8')
-    ]);
-    const stats     = await statsRes.json();
-    const reminders = await remRes.json();
-    const activity  = await actRes.json();
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = severity === 'urgent' ? 880 : 660;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc.start(); osc.stop(ctx.currentTime + 0.8);
+  } catch { /* audio not available */ }
+}
 
-    document.getElementById('s-patients').textContent  = stats.patients;
-    document.getElementById('s-reminders').textContent = stats.activeReminders;
-    document.getElementById('s-today').textContent     = stats.activityToday;
-    document.getElementById('s-analyses').textContent  = stats.totalActivity;
+// Show floating banner notification
+function showAlertBanner(alert) {
+  // Remove old banners if too many
+  if (alertBanners.length >= 3) {
+    alertBanners[0].remove();
+    alertBanners.shift();
+  }
 
-    // Today's reminders sorted by time
-    const sorted = [...reminders].filter(r=>r.active).sort((a,b)=>a.time.localeCompare(b.time));
-    const now = new Date();
-    const nowMin = now.getHours()*60+now.getMinutes();
-    document.getElementById('todayReminders').innerHTML = sorted.length
-      ? sorted.map(r=>{
-          const [h,m]   = r.time.split(':').map(Number);
-          const rMin    = h*60+m;
-          const isPast  = rMin < nowMin;
-          const isNext  = !isPast && (rMin - nowMin) < 60;
+  const banner = document.createElement('div');
+  banner.className = `alert-banner ${alert.severity === 'urgent' ? 'urgent' : alert.severity === 'medium' ? 'medium' : 'low'}`;
+  banner.style.top = `${70 + alertBanners.length * 200}px`;
+
+  banner.innerHTML = `
+    <div class="ab-header">
+      <div class="ab-icon">${SEV_ICONS[alert.severity] || '🔔'}</div>
+      <div class="ab-title">${alert.severity === 'urgent' ? 'EMERGENCY ALERT' : 'Patient Alert'}</div>
+      <button class="ab-close" onclick="dismissBanner(this.closest('.alert-banner'), '${alert.id}')">×</button>
+    </div>
+    <div class="ab-body">
+      <div class="ab-patient">👤 ${alert.patientName}</div>
+      <div class="ab-msg">${alert.message}</div>
+      <div class="ab-time">${fmtTime(alert.timestamp)}</div>
+    </div>
+    <div class="ab-actions">
+      <button class="ab-btn-ack" onclick="acknowledgeAlert('${alert.id}', this.closest('.alert-banner'))">
+        ✓ Acknowledge
+      </button>
+    </div>`;
+
+  document.body.appendChild(banner);
+  alertBanners.push(banner);
+
+  // Auto-dismiss after 30s (urgent stays until acknowledged)
+  if (alert.severity !== 'urgent') {
+    setTimeout(() => { if (banner.parentElement) dismissBanner(banner, alert.id); }, 30000);
+  }
+}
+
+async function acknowledgeAlert(alertId, bannerEl) {
+  try {
+    await apiFetch(`/api/alerts/${alertId}/read`, { method:'PATCH' });
+  } catch { }
+  dismissBanner(bannerEl, alertId);
+}
+
+function dismissBanner(bannerEl, alertId) {
+  bannerEl.style.opacity = '0';
+  bannerEl.style.transform = 'translateX(40px)';
+  bannerEl.style.transition = 'all .3s';
+  setTimeout(() => { bannerEl.remove(); alertBanners = alertBanners.filter(b => b !== bannerEl); }, 300);
+}
+
+// Alert panel
+function toggleAlertPanel() {
+  alertPanelOpen = !alertPanelOpen;
+  document.getElementById('alertPanel').style.display = alertPanelOpen ? 'flex' : 'none';
+  if (alertPanelOpen) { updateAlertBadge(0); unreadCount = 0; }
+}
+
+function updateAlertBadge(count) {
+  const badge = document.getElementById('alertBadge');
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function updateAlertCount() {
+  apiFetch('/api/stats').then(r=>r.json()).then(s => {
+    document.getElementById('s-alerts').textContent = s.unreadAlerts || 0;
+  }).catch(()=>{});
+}
+
+function addAlertToPanel(alert) {
+  const list = document.getElementById('alertPanelList');
+  if (list.querySelector('.no-alerts')) list.innerHTML = '';
+
+  const item = document.createElement('div');
+  item.className = `ahp-item ${alert.read ? '' : 'unread'}`;
+  item.innerHTML = `
+    <div class="ahp-dot" style="background:${SEV_COLORS[alert.severity]||'var(--text-dim)'};box-shadow:0 0 6px ${SEV_COLORS[alert.severity]||'transparent'};"></div>
+    <div>
+      <div class="ahp-msg"><strong>${alert.patientName}:</strong> ${alert.message}</div>
+      <div class="ahp-meta">${fmtTime(alert.timestamp)} · ${alert.severity}</div>
+    </div>`;
+  list.prepend(item);
+}
+
+async function clearAllAlerts() {
+  try {
+    await apiFetch('/api/alerts', { method:'DELETE' });
+    document.getElementById('alertPanelList').innerHTML = '<div class="no-alerts" style="text-align:center;padding:30px;color:var(--text-dim);">No alerts.</div>';
+    updateAlertBadge(0); unreadCount = 0;
+    document.getElementById('s-alerts').textContent = '0';
+    showToast('All alerts cleared', 'success');
+  } catch { showToast('Could not clear alerts', 'error'); }
+}
+
+// Dashboard data
+async function loadDashboard(){
+  try{
+    const[tr,sr,ar]=await Promise.all([apiFetch('/api/trucks').catch(()=>apiFetch('/api/reminders')),apiFetch('/api/stats'),apiFetch('/api/activity?limit=8')]);
+    const reminders=await tr.json(), stats=await sr.json(), activity=await ar.json();
+    document.getElementById('s-patients').textContent =stats.patients;
+    document.getElementById('s-reminders').textContent=stats.activeReminders;
+    document.getElementById('s-today').textContent    =stats.activityToday;
+    document.getElementById('s-alerts').textContent   =stats.unreadAlerts||0;
+
+    const sorted=[...reminders].filter(r=>r.active).sort((a,b)=>a.time.localeCompare(b.time));
+    const now=new Date(), nowMin=now.getHours()*60+now.getMinutes();
+    document.getElementById('todayReminders').innerHTML=sorted.length
+      ?sorted.map(r=>{
+          const[h,m]=r.time.split(':').map(Number);
+          const rMin=h*60+m, isPast=rMin<nowMin, isNext=!isPast&&(rMin-nowMin)<60;
           return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:${isNext?'var(--teal-light)':isPast?'#f8f8f8':'var(--bg-panel)'};border:1px solid ${isNext?'rgba(20,184,166,.3)':'var(--border)'};">
-            <div style="width:36px;height:36px;border-radius:9px;background:${TYPE_COLORS[r.type]||'#f0f0f0'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${TYPE_ICONS[r.type]||'📌'}</div>
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;color:${isPast?'var(--text-dim)':'var(--text)'};">${r.label}</div>
-              <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;">${r.time}</div>
-            </div>
+            <div style="width:34px;height:34px;border-radius:8px;background:${isNext?'var(--teal)':'var(--bg-input)'};display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">${TYPE_ICONS[r.type]||'📌'}</div>
+            <div style="flex:1;"><div style="font-weight:600;font-size:13px;color:${isPast?'var(--text-dim)':'var(--text)'};">${r.label}</div><div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;">${r.time}</div></div>
             ${isNext?'<span class="badge badge-teal">NEXT</span>':''}
-            ${isPast?'<span style="font-size:11px;color:var(--text-dim);">Done</span>':''}
           </div>`;
         }).join('')
-      : '<div style="text-align:center;padding:20px;color:var(--text-dim);">No reminders set. <a href="reminders.html" style="color:var(--teal);">Add one →</a></div>';
+      :'<div style="text-align:center;padding:20px;color:var(--text-dim);">No reminders. <a href="reminders.html" style="color:var(--teal);">Add one →</a></div>';
 
-    // Activity feed
-    document.getElementById('activityFeed').innerHTML = activity.length
-      ? activity.map(a=>`
-          <div class="tl-item">
-            <div class="tl-dot-col">
-              <div class="tl-dot" style="background:${ACT_COLORS[a.type]||'var(--text-dim)'};"></div>
-              <div class="tl-line"></div>
-            </div>
-            <div class="tl-time">${fmtTime(a.timestamp)}</div>
-            <div class="tl-text">${a.message}</div>
-          </div>`).join('')
-      : '<div style="text-align:center;padding:20px;color:var(--text-dim);">No activity yet.</div>';
-  } catch(e){
-    console.error(e);
-    showToast('Could not reach server','error');
-  }
+    document.getElementById('activityFeed').innerHTML=activity.length
+      ?activity.map(a=>`<div class="tl-item"><div class="tl-dot-col"><div class="tl-dot" style="background:${ACT_COLORS[a.type]||'var(--text-dim)'}"></div><div class="tl-line"></div></div><div class="tl-time">${fmtTime(a.timestamp)}</div><div class="tl-text">${a.message}</div></div>`).join('')
+      :'<div style="text-align:center;padding:20px;color:var(--text-dim);">No activity yet.</div>';
+  }catch(e){ console.error(e); }
+}
+
+async function loadAlertHistory() {
+  try {
+    const res    = await apiFetch('/api/alerts?limit=20');
+    const alerts = await res.json();
+    const unread = alerts.filter(a => !a.read).length;
+    if (unread) updateAlertBadge(unread);
+    if (alerts.length) {
+      document.getElementById('alertPanelList').innerHTML = '';
+      alerts.forEach(a => addAlertToPanel(a));
+    }
+  } catch { }
 }
 
 function fmtTime(iso){
@@ -193,7 +384,14 @@ function showToast(msg,type='success'){
   clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000);
 }
 
+// Request notification permission
+if(Notification.permission==='default') Notification.requestPermission();
+
+// Init
 loadDashboard();
+loadAlertHistory();
+connectSSE();
+setInterval(loadDashboard, 30000);
 </script>
 </body>
 </html>

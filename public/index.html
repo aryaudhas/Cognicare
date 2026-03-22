@@ -332,7 +332,7 @@ async function clearAllAlerts() {
 // Dashboard data
 async function loadDashboard(){
   try{
-    const[tr,sr,ar]=await Promise.all([apiFetch('/api/trucks').catch(()=>apiFetch('/api/reminders')),apiFetch('/api/stats'),apiFetch('/api/activity?limit=8')]);
+    const[tr,sr,ar]=await Promise.all([apiFetch('/api/reminders'),apiFetch('/api/stats'),apiFetch('/api/activity?limit=8')]);
     const reminders=await tr.json(), stats=await sr.json(), activity=await ar.json();
     document.getElementById('s-patients').textContent =stats.patients;
     document.getElementById('s-reminders').textContent=stats.activeReminders;

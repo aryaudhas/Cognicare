@@ -1,9 +1,6 @@
 // ============================================================
 //  CogniCare — Express Backend (Google Gemini)
-//
-//  AUTO MODEL DETECTION: Tests each model at startup and picks
-//  the first working one automatically.
-//
+//  AUTO MODEL DETECTION + JSON Data Analysis
 //  Required: GEMINI_API_KEY — free at aistudio.google.com
 // ============================================================
 
@@ -19,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-// ── Correct model names taken directly from the API list ──────
+// Correct model names from the API list
 const MODEL_CANDIDATES = [
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
@@ -107,13 +104,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Gemini helpers ────────────────────────────────────────────
-
 function requireAI() {
   if (!genAI || !activeModel) {
     throw new Error(
       !genAI
         ? 'GEMINI_API_KEY not set. Get your free key at aistudio.google.com'
-        : 'No working Gemini model found. Check your API key at aistudio.google.com'
+        : 'No working Gemini model found. Check your API key.'
     );
   }
 }
@@ -122,13 +118,12 @@ function cleanJSON(text) {
   return text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 }
 
-// Retry across models if one fails at runtime
 async function tryModels(fn) {
   if (activeModel) {
     try { return await fn(activeModel); }
     catch (e) {
       if (!e.message.includes('404') && !e.message.includes('429') && !e.message.includes('not found')) throw e;
-      console.warn(`Model ${activeModel} failed at runtime, trying others...`);
+      console.warn(`Model ${activeModel} failed, trying others...`);
     }
   }
   for (const modelId of MODEL_CANDIDATES) {
@@ -136,13 +131,12 @@ async function tryModels(fn) {
     try {
       const result = await fn(modelId);
       activeModel  = modelId;
-      console.log(`Switched to model: ${modelId}`);
       return result;
     } catch (e) {
       if (!e.message.includes('404') && !e.message.includes('429') && !e.message.includes('not found')) throw e;
     }
   }
-  throw new Error('No working Gemini model available. Please check your API key at aistudio.google.com');
+  throw new Error('No working Gemini model available. Check your API key at aistudio.google.com');
 }
 
 async function geminiText(prompt, systemInstruction = '') {
@@ -183,10 +177,7 @@ function extractYouTubeId(url) {
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
     /youtube\.com\/shorts\/([^&\n?#]+)/
   ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
+  for (const p of patterns) { const m = url.match(p); if (m) return m[1]; }
   return null;
 }
 
@@ -199,19 +190,17 @@ async function getYouTubeData(videoId) {
   const images = [];
   for (const url of thumbUrls) {
     try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const buf = await res.buffer();
-      if (buf.length < 5000) continue;
+      const res = await fetch(url); if (!res.ok) continue;
+      const buf = await res.buffer(); if (buf.length < 5000) continue;
       images.push({ data: buf.toString('base64'), mediaType: 'image/jpeg' });
     } catch { }
   }
   let metadata = { title: 'Unknown', author: 'Unknown' };
   try {
     const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-    if (r.ok) { const d = await r.json(); metadata.title = d.title || 'Unknown'; metadata.author = d.author_name || 'Unknown'; }
+    if (r.ok) { const d = await r.json(); metadata.title = d.title||'Unknown'; metadata.author = d.author_name||'Unknown'; }
   } catch { }
-  return { images, metadata, videoId, videoUrl: `https://www.youtube.com/watch?v=${videoId}` };
+  return { images, metadata, videoId, videoUrl:`https://www.youtube.com/watch?v=${videoId}` };
 }
 
 // ── API: AI STATUS ────────────────────────────────────────────
@@ -220,12 +209,93 @@ app.get('/api/ai-status', (req, res) => {
     hasKey:      !!genAI,
     activeModel: activeModel || 'none',
     ready:       !!(genAI && activeModel),
-    status:      genAI && activeModel
-      ? `✓ Ready — ${activeModel}`
-      : !genAI
-        ? '✗ No API key — set GEMINI_API_KEY'
-        : '✗ No working model found'
+    status:      genAI && activeModel ? `✓ Ready — ${activeModel}` : !genAI ? '✗ No API key' : '✗ No working model'
   });
+});
+
+// ── API: JSON ANALYZE ─────────────────────────────────────────
+// Accepts any JSON data (sensor readings, health logs, observation data etc.)
+// Returns a daily summary + prioritised alerts
+app.post('/api/json-analyze', async (req, res) => {
+  const { jsonData, patientId, dataType, date } = req.body;
+
+  if (!jsonData) return res.status(400).json({ error: 'No JSON data provided' });
+
+  // Parse if string, use as-is if already object
+  let parsedData;
+  try {
+    parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid JSON — please check the format and try again' });
+  }
+
+  try {
+    const patient = db.patients.find(p => p.id === patientId);
+
+    const prompt = `You are a compassionate AI assistant specializing in cognitive decline patient monitoring.
+You have been given structured JSON data about a patient and must produce a daily summary and alert list.
+
+Patient: ${patient ? `${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}. Notes: ${patient.notes}` : 'Unknown patient'}
+Data type: ${dataType || 'General health/observation data'}
+Date: ${date || new Date().toLocaleDateString('en-CA')}
+
+JSON Data to analyze:
+${JSON.stringify(parsedData, null, 2)}
+
+Based on this data, return ONLY this JSON structure with no markdown:
+{
+  "dailySummary": {
+    "overview": "2-3 sentence warm human-readable overview of the patient's day/status",
+    "overallStatus": "good|fair|concerning|critical",
+    "keyFindings": ["finding 1", "finding 2", "finding 3"],
+    "positives": ["positive observation 1", "positive observation 2"],
+    "concerns": ["concern 1", "concern 2"]
+  },
+  "alerts": [
+    {
+      "priority": "low|medium|high|critical",
+      "category": "medication|nutrition|hydration|mobility|cognitive|safety|social|sleep|other",
+      "title": "Short alert title",
+      "description": "Detailed description of what was detected and why it matters",
+      "action": "Specific recommended action for the caregiver"
+    }
+  ],
+  "recommendations": [
+    {
+      "timeframe": "immediate|today|this_week",
+      "text": "Specific actionable recommendation"
+    }
+  ],
+  "metricsExtracted": {
+    "anyKeyMetricFound1": "value",
+    "anyKeyMetricFound2": "value"
+  },
+  "nextCheckIn": "When the caregiver should next check on the patient based on this data"
+}
+
+Sort alerts by priority (critical first). Be thorough, compassionate, and clinically useful.
+If the data contains normal readings with nothing concerning, say so clearly with positive reinforcement.`;
+
+    const raw   = await geminiText(prompt);
+    const clean = cleanJSON(raw);
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('AI did not return valid JSON — please try again');
+    const result = JSON.parse(match[0]);
+
+    // Log the activity
+    const alertCount = result.alerts?.length || 0;
+    const highAlerts = result.alerts?.filter(a => a.priority === 'high' || a.priority === 'critical').length || 0;
+    logActivity(
+      patientId || 'unknown', 'json_analysis',
+      `JSON analysis: ${result.dailySummary?.overallStatus || 'unknown'} — ${alertCount} alerts (${highAlerts} high/critical)`
+    );
+
+    res.json({ success: true, result, modelUsed: activeModel });
+
+  } catch (e) {
+    console.error('JSON analyze error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── API: YOUTUBE INFO ─────────────────────────────────────────
@@ -240,7 +310,7 @@ app.post('/api/youtube-info', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── API: ANALYZE ──────────────────────────────────────────────
+// ── API: ANALYZE IMAGES / YOUTUBE ────────────────────────────
 app.post('/api/analyze', async (req, res) => {
   const { images, patientId, patientName, context, youtubeUrl } = req.body;
   let imagesToAnalyze = images || [];
@@ -267,12 +337,11 @@ app.post('/api/analyze', async (req, res) => {
     }));
 
     const prompt = `You are a compassionate AI medical assistant specializing in cognitive decline monitoring.
-Carefully analyze this image/video of ${name} and return a structured JSON assessment.
+Analyze this image/video of ${name} and return ONLY this JSON with no markdown:
 
 Patient: ${patient ? `${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}, Notes: ${patient.notes}` : 'Unknown'}
 ${videoContext ? `Context: ${videoContext}` : ''}
 
-Return ONLY this JSON with no markdown, no extra text:
 {
   "observations": ["observation 1", "observation 2"],
   "cognitiveIndicators": {
@@ -359,7 +428,7 @@ Return ONLY a JSON array. Each item must have:
 - time: HH:MM 24hr format
 - days: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
-8-12 reminders spread sensibly across the day. JSON array ONLY, no markdown.`;
+8-12 reminders spread across the day. JSON array ONLY, no markdown.`;
 
     const raw   = await geminiText(prompt);
     const clean = cleanJSON(raw);
@@ -371,11 +440,7 @@ Return ONLY a JSON array. Each item must have:
 
 // ── PATIENTS ──────────────────────────────────────────────────
 app.get('/api/patients',     (req, res) => res.json(db.patients));
-app.get('/api/patients/:id', (req, res) => {
-  const p = db.patients.find(p => p.id === req.params.id);
-  if (!p) return res.status(404).json({ error: 'Not found' });
-  res.json(p);
-});
+app.get('/api/patients/:id', (req, res) => { const p = db.patients.find(p => p.id === req.params.id); if (!p) return res.status(404).json({ error:'Not found' }); res.json(p); });
 app.post('/api/patients', (req, res) => {
   const { name, age, stage, caregiver, phone, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
@@ -395,10 +460,7 @@ app.delete('/api/patients/:id', (req, res) => {
 });
 
 // ── REMINDERS ─────────────────────────────────────────────────
-app.get('/api/reminders', (req, res) => {
-  const { patientId } = req.query;
-  res.json(patientId ? db.reminders.filter(r => r.patientId === patientId) : db.reminders);
-});
+app.get('/api/reminders', (req, res) => { const { patientId } = req.query; res.json(patientId ? db.reminders.filter(r => r.patientId === patientId) : db.reminders); });
 app.post('/api/reminders', (req, res) => {
   const { patientId, type, label, time, days } = req.body;
   if (!patientId || !type || !label || !time) return res.status(400).json({ error: 'Missing fields' });
@@ -424,10 +486,7 @@ app.get('/api/activity', (req, res) => {
   if (limit) logs = logs.slice(0, parseInt(limit));
   res.json(logs);
 });
-app.post('/api/activity', (req, res) => {
-  logActivity(req.body.patientId, req.body.type, req.body.message);
-  res.status(201).json({ logged: true });
-});
+app.post('/api/activity', (req, res) => { logActivity(req.body.patientId, req.body.type, req.body.message); res.status(201).json({ logged: true }); });
 app.get('/api/stats', (req, res) => {
   res.json({
     patients:        db.patients.length,
@@ -438,9 +497,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // ── CATCH-ALL ─────────────────────────────────────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 // ── START ─────────────────────────────────────────────────────
 app.listen(PORT, async () => {
@@ -451,11 +508,8 @@ app.listen(PORT, async () => {
   console.log('');
   if (GEMINI_API_KEY) {
     activeModel = await detectWorkingModel();
-    if (activeModel) {
-      console.log(`  🚀  Ready — using model: ${activeModel}`);
-    } else {
-      console.log('  ⚠   No working model found. Check your API key at aistudio.google.com');
-    }
+    if (activeModel) console.log(`  🚀  Ready — using: ${activeModel}`);
+    else console.log('  ⚠   No working model found. Check your API key.');
   }
   console.log('');
 });

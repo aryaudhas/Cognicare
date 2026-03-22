@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JSON Data — CogniCare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .json-editor {
+      width: 100%;
+      min-height: 280px;
+      padding: 14px 16px;
+      background: #1a2332;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      color: #a8d5c2;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .json-editor:focus { border-color: var(--teal); }
+    .json-editor.error { border-color: var(--red); }
+    .json-editor.valid { border-color: var(--green); }
+
+    .example-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 8px;
+    }
+    .example-card:hover { border-color: var(--teal); background: var(--teal-light); }
+    .example-title { font-weight: 600; font-size: 13px; color: var(--text); margin-bottom: 3px; }
+    .example-desc  { font-size: 11px; color: var(--text-muted); }
+
+    .alert-card {
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      border: 1px solid transparent;
+    }
+    .alert-card.critical { background: #fef2f2; border-color: rgba(239,68,68,.3); }
+    .alert-card.high     { background: #fff7ed; border-color: rgba(245,158,11,.3); }
+    .alert-card.medium   { background: #fffbeb; border-color: rgba(234,179,8,.25); }
+    .alert-card.low      { background: #f0fdf4; border-color: rgba(34,197,94,.25); }
+
+    .alert-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .alert-priority {
+      font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+    }
+    .ap-critical { background: var(--red-light);    color: var(--red); }
+    .ap-high     { background: var(--amber-light);  color: #92400e; }
+    .ap-medium   { background: #fef9c3;              color: #854d0e; }
+    .ap-low      { background: var(--green-light);  color: #166534; }
+
+    .alert-category { font-size: 10px; color: var(--text-muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+    .alert-title     { font-weight: 700; font-size: 14px; color: var(--text); }
+    .alert-desc      { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.55; }
+    .alert-action    { font-size: 12px; color: var(--teal-dark); font-weight: 600; margin-top: 8px; padding: 6px 10px; background: var(--teal-light); border-radius: 6px; display: inline-block; }
+
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 13px;
+    }
+    .sc-good      { background: var(--green-light); color: #166534; }
+    .sc-fair      { background: var(--teal-light);  color: var(--teal-dark); }
+    .sc-concerning{ background: var(--amber-light); color: #92400e; }
+    .sc-critical  { background: var(--red-light);   color: #991b1b; }
+
+    .rec-card {
+      display: flex; gap: 12px; padding: 10px 14px;
+      background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 8px;
+    }
+    .rec-badge {
+      padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase;
+      white-space: nowrap; height: fit-content; margin-top: 2px;
+    }
+    .rb-immediate { background: var(--red-light);    color: var(--red); }
+    .rb-today     { background: var(--amber-light);  color: #92400e; }
+    .rb-this_week { background: var(--blue-light);   color: #1d4ed8; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; }
+    .metric-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .metric-key { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    .metric-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--text); }
+
+    .json-valid-msg { font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-top: 6px; }
+    .json-valid-msg.ok  { color: var(--green); }
+    .json-valid-msg.err { color: var(--red); }
+
+    .upload-json-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
+      color: var(--text-muted); transition: all .2s; font-family: var(--font-body);
+    }
+    .upload-json-btn:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+    .history-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer;
+      transition: background .15s;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover { background: #f8fafc; }
+    .history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+
+  <div style="margin-bottom:28px;">
+    <div class="section-label">AI Data Analysis</div>
+    <h1 class="section-title">JSON Data Input</h1>
+    <p style="color:var(--text-muted);font-size:14px;margin-top:6px;">
+      Paste any structured JSON — health sensor data, observation logs, medication records, vitals, 
+      behaviour reports — and AI will generate a daily summary and prioritised alert list.
+    </p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <!-- LEFT: Input panel -->
+    <div>
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <div style="font-family:var(--font-display);font-size:18px;margin-bottom:16px;">Input Data</div>
+
+        <!-- Patient + data type -->
+        <div class="form-row" style="margin-bottom:14px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Patient</label>
+            <select class="form-select" id="patientSelect"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Data Type</label>
+            <select class="form-select" id="dataType">
+              <option value="General health/observation data">General observations</option>
+              <option value="Vital signs and health metrics">Vital signs</option>
+              <option value="Medication and treatment log">Medication log</option>
+              <option value="Daily activity and behaviour log">Activity / behaviour log</option>
+              <option value="Sleep tracking data">Sleep data</option>
+              <option value="Nutrition and hydration log">Nutrition / hydration</option>
+              <option value="Cognitive assessment results">Cognitive assessment</option>
+              <option value="Sensor and wearable device data">Sensor / wearable data</option>
+              <option value="Caregiver observation notes in JSON">Caregiver notes</option>
+              <option value="Mixed patient health data">Mixed / other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:8px;">
+          <label class="form-label">Date (optional)</label>
+          <input type="date" class="form-input" id="dataDate">
+        </div>
+
+        <!-- JSON editor -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label class="form-label" style="margin-bottom:0;">JSON Data</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="upload-json-btn" onclick="document.getElementById('jsonFile').click()">📁 Upload .json</button>
+            <input type="file" id="jsonFile" accept=".json,application/json" style="display:none" onchange="loadJSONFile(this)">
+            <button class="upload-json-btn" onclick="clearEditor()">✕ Clear</button>
+          </div>
+        </div>
+
+        <textarea
+          class="json-editor"
+          id="jsonEditor"
+          placeholder='Paste your JSON here, e.g.:
+{
+  "date": "2025-03-22",
+  "vitals": {
+    "heartRate": 78,
+    "bloodPressure": "128/82",
+    "temperature": 36.8,
+    "oxygenSaturation": 97
+  },
+  "medications": {
+    "morningDose": "taken",
+    "afternoonDose": "missed"
+  },
+  "mood": "anxious",
+  "appetite": "poor",
+  "sleep": { "hours": 5.5, "quality": "restless" },
+  "incidents": ["wandered to kitchen at 2am", "did not recognise caregiver briefly"]
+}'
+          oninput="validateJSON(this)"
+        ></textarea>
+        <div class="json-valid-msg" id="jsonValidMsg"></div>
+
+        <button class="btn btn-primary" style="width:100%;margin-top:14px;padding:13px;" id="analyzeBtn" onclick="runAnalysis()">
+          🧠 Generate Summary &amp; Alerts
+        </button>
+      </div>
+
+      <!-- Examples -->
+      <div class="card card-pad">
+        <div style="font-family:var(--font-display);font-size:16px;margin-bottom:14px;">📋 Example Templates</div>
+        <div class="example-card" onclick="loadExample('vitals')">
+          <div class="example-title">💓 Vital Signs</div>
+          <div class="example-desc">Heart rate, blood pressure, temperature, oxygen</div>
+        </div>
+        <div class="example-card" onclick="loadExample('daily')">
+          <div class="example-title">📅 Daily Observation Log</div>
+          <div class="example-desc">Mood, appetite, sleep, incidents, activities</div>
+        </div>
+        <div class="example-card" onclick="loadExample('medication')">
+          <div class="example-title">💊 Medication Tracking</div>
+          <div class="example-desc">Doses taken/missed, side effects, timing</div>
+        </div>
+        <div class="example-card" onclick="loadExample('cognitive')">
+          <div class="example-title">🧩 Cognitive Assessment</div>
+          <div class="example-desc">Memory tests, orientation, confusion episodes</div>
+        </div>
+        <div class="example-card" onclick="loadExample('sensor')">
+          <div class="example-title">📡 Sensor / Wearable Data</div>
+          <div class="example-desc">Steps, activity level, location, fall detection</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div>
+      <!-- Empty state -->
+      <div id="emptyState" class="card card-pad" style="text-align:center;padding:60px 20px;">
+        <div style="font-size:52px;margin-bottom:14px;">📋</div>
+        <div style="font-family:var(--font-display);font-size:18px;margin-bottom:8px;">No Analysis Yet</div>
+        <div style="color:var(--text-muted);font-size:14px;">Paste JSON data on the left and click Analyze to get a daily summary and alerts.</div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsState" style="display:none;">
+
+        <!-- Daily Summary card -->
+        <div class="card card-pad" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-family:var(--font-display);font-size:18px;">Daily Summary</div>
+            <div id="statusChip" class="status-chip sc-good">✓ Good</div>
+          </div>
+          <p style="font-size:14px;line-height:1.7;color:var(--text);margin-bottom:16px;" id="summaryOverview"></p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">✓ Positives</div>
+              <div id="positivesList"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;">⚠ Concerns</div>
+              <div id="concernsList"></div>
+            </div>
+          </div>
+
+          <div id="metricsWrap" style="display:none;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Key Metrics Extracted</div>
+            <div class="metrics-grid" id="metricsGrid"></div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 14px;background:var(--teal-light);border-radius:8px;font-size:13px;color:var(--teal-dark);font-weight:500;" id="nextCheckIn"></div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="card card-pad" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-family:var(--font-display);font-size:18px;">Alerts</div>
+            <div id="alertCountBadge" class="badge badge-red">0 alerts</div>
+          </div>
+          <div id="alertsList"></div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card card-pad">
+          <div style="font-family:var(--font-display);font-size:18px;margin-bottom:14px;">Recommendations</div>
+          <div id="recommendationsList"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Analysis History -->
+  <div style="margin-top:24px;">
+    <div class="section-head" style="margin-bottom:14px;">
+      <div>
+        <div class="section-label">Past Analyses</div>
+        <div class="section-title-lg" style="font-size:18px;">Analysis History</div>
+      </div>
+      <button class="btn btn-secondary" style="font-size:11px;padding:7px 14px;" onclick="loadHistory()">↺ Refresh</button>
+    </div>
+    <div class="card" id="historyList">
+      <div style="text-align:center;padding:30px;color:var(--text-dim);">Loading...</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Example JSON templates ─────────────────────────────────────
+const EXAMPLES = {
+  vitals: {
+    type: 'Vital signs and health metrics',
+    data: {
+      date: new Date().toISOString().slice(0,10),
+      vitals: {
+        heartRate: 92,
+        bloodPressure: "148/92",
+        temperature: 37.4,
+        oxygenSaturation: 95,
+        respiratoryRate: 18,
+        weight_kg: 64.2
+      },
+      hydration: "low — only 400ml fluids today",
+      painLevel: 3,
+      mobility: "slow, shuffling gait observed"
+    }
+  },
+  daily: {
+    type: 'Daily activity and behaviour log',
+    data: {
+      date: new Date().toISOString().slice(0,10),
+      mood: "anxious and confused in morning, calmer by afternoon",
+      appetite: { breakfast: "refused", lunch: "half eaten", dinner: "good" },
+      sleep: { hoursLastNight: 5.5, quality: "restless", wakeUps: 3 },
+      activities: ["watched TV", "short walk in garden", "listened to music"],
+      incidents: [
+        "wandered to front door at 6am",
+        "did not recognise caregiver briefly at 9am",
+        "agitated during medication time"
+      ],
+      socialInteraction: "phone call with daughter, positive response",
+      bathing: "refused morning shower, accepted evening wash",
+      continence: "one incident at 14:30"
+    }
+  },
+  medication: {
+    type: 'Medication and treatment log',
+    data: {
+      date: new Date().toISOString().slice(0,10),
+      medications: [
+        { name: "Donepezil 10mg", scheduledTime: "08:00", actualTime: "08:15", status: "taken", notes: "taken with breakfast" },
+        { name: "Amlodipine 5mg", scheduledTime: "08:00", actualTime: null,    status: "missed", notes: "refused, said she already took it" },
+        { name: "Vitamin D 1000IU",scheduledTime: "12:00", actualTime: "12:30", status: "taken", notes: "no issues" },
+        { name: "Memantine 10mg",  scheduledTime: "18:00", actualTime: "18:00", status: "taken", notes: "" }
+      ],
+      sideEffectsObserved: ["mild nausea after morning dose", "drowsiness at 10am"],
+      adherenceRate: "75%"
+    }
+  },
+  cognitive: {
+    type: 'Cognitive assessment results',
+    data: {
+      date: new Date().toISOString().slice(0,10),
+      assessmentType: "Daily informal observation",
+      orientation: {
+        knowsCurrentDate: false,
+        knowsCurrentYear: true,
+        knowsLocation: true,
+        recognisedFamilyMembers: "recognised daughter, did not recognise son-in-law"
+      },
+      memory: {
+        shortTermRecall: "poor — forgot breakfast by 10am",
+        longTermRecall: "good — recalled childhood stories clearly",
+        repeatedQuestions: 8
+      },
+      language: { wordFinding: "mild difficulty", coherence: "mostly coherent" },
+      confusionEpisodes: [
+        { time: "07:30", duration: "15 minutes", trigger: "waking up" },
+        { time: "16:00", duration: "30 minutes", trigger: "sundowning" }
+      ],
+      moodAndBehaviour: { agitation: "mild", anxiety: "moderate", depression: "none observed" }
+    }
+  },
+  sensor: {
+    type: 'Sensor and wearable device data',
+    data: {
+      date: new Date().toISOString().slice(0,10),
+      wearable: { device: "smartwatch", batteryLevel: "23%" },
+      activity: {
+        steps: 847,
+        activeMinutes: 22,
+        sedentaryMinutes: 390,
+        caloriesBurned: 1420
+      },
+      sleep: { totalHours: 6.1, deepSleep: 1.2, remSleep: 0.8, awakenings: 4 },
+      heartRate: { average: 74, min: 58, max: 112, irregularEvents: 2 },
+      location: {
+        stayedInHome: true,
+        roomsVisited: ["bedroom", "bathroom", "kitchen", "living room"],
+        nightTimeMovement: "left bedroom twice between 2am-4am"
+      },
+      fallDetection: { fallsDetected: 0, nearFalls: 1, timestamp: "14:22" }
+    }
+  }
+};
+
+let patients = [];
+
+// Load patients
+async function loadPatients() {
+  try {
+    const res = await apiFetch('/api/patients');
+    patients  = await res.json();
+    document.getElementById('patientSelect').innerHTML =
+      patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  } catch {
+    document.getElementById('patientSelect').innerHTML = '<option value="P001">Margaret Thompson</option>';
+  }
+}
+
+// Load example
+function loadExample(key) {
+  const ex = EXAMPLES[key];
+  if (!ex) return;
+  document.getElementById('dataType').value  = ex.type;
+  document.getElementById('jsonEditor').value = JSON.stringify(ex.data, null, 2);
+  validateJSON(document.getElementById('jsonEditor'));
+  showToast(`Loaded ${key} example template`, 'success');
+}
+
+// Validate JSON as user types
+function validateJSON(el) {
+  const val = el.value.trim();
+  const msg = document.getElementById('jsonValidMsg');
+  if (!val) { el.className = 'json-editor'; msg.textContent = ''; return; }
+  try {
+    JSON.parse(val);
+    el.className   = 'json-editor valid';
+    msg.textContent = '✓ Valid JSON';
+    msg.className   = 'json-valid-msg ok';
+  } catch (e) {
+    el.className   = 'json-editor error';
+    msg.textContent = `✗ ${e.message}`;
+    msg.className   = 'json-valid-msg err';
+  }
+}
+
+// Upload .json file
+function loadJSONFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('jsonEditor').value = e.target.result;
+    validateJSON(document.getElementById('jsonEditor'));
+    showToast(`Loaded ${file.name}`, 'success');
+  };
+  reader.readAsText(file);
+}
+
+function clearEditor() {
+  document.getElementById('jsonEditor').value = '';
+  document.getElementById('jsonEditor').className = 'json-editor';
+  document.getElementById('jsonValidMsg').textContent = '';
+}
+
+// Run analysis
+async function runAnalysis() {
+  const raw = document.getElementById('jsonEditor').value.trim();
+  if (!raw) { showToast('Paste some JSON data first', 'error'); return; }
+
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { showToast(`Invalid JSON: ${e.message}`, 'error'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '🧠 Analyzing...';
+
+  try {
+    const res  = await apiFetch('/api/json-analyze', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        jsonData:  parsed,
+        patientId: document.getElementById('patientSelect').value,
+        dataType:  document.getElementById('dataType').value,
+        date:      document.getElementById('dataDate').value || new Date().toLocaleDateString('en-CA')
+      })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Analysis failed');
+
+    renderResults(data.result);
+    loadHistory();
+    showToast('Analysis complete', 'success');
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '🧠 Generate Summary & Alerts';
+  }
+}
+
+// Render results
+const STATUS_CONFIG = {
+  good:       { cls:'sc-good',       icon:'✓', label:'Good' },
+  fair:       { cls:'sc-fair',       icon:'~', label:'Fair' },
+  concerning: { cls:'sc-concerning', icon:'⚠', label:'Concerning' },
+  critical:   { cls:'sc-critical',   icon:'🚨', label:'Critical' }
+};
+
+const PRIORITY_ICONS = { critical:'🚨', high:'⚠️', medium:'📋', low:'ℹ️' };
+
+function renderResults(r) {
+  document.getElementById('emptyState').style.display  = 'none';
+  document.getElementById('resultsState').style.display = 'block';
+
+  const ds  = r.dailySummary || {};
+  const sc  = STATUS_CONFIG[ds.overallStatus] || STATUS_CONFIG.fair;
+  const chip = document.getElementById('statusChip');
+  chip.className   = `status-chip ${sc.cls}`;
+  chip.textContent = `${sc.icon} ${sc.label}`;
+
+  document.getElementById('summaryOverview').textContent = ds.overview || '—';
+
+  document.getElementById('positivesList').innerHTML =
+    (ds.positives || []).map(p =>
+      `<div style="font-size:12px;color:#166534;padding:4px 0;border-bottom:1px solid #dcfce7;display:flex;gap:6px;"><span>✓</span>${p}</div>`
+    ).join('') || '<div style="font-size:12px;color:var(--text-dim);">None noted</div>';
+
+  document.getElementById('concernsList').innerHTML =
+    (ds.concerns || []).map(c =>
+      `<div style="font-size:12px;color:#991b1b;padding:4px 0;border-bottom:1px solid #fee2e2;display:flex;gap:6px;"><span>⚠</span>${c}</div>`
+    ).join('') || '<div style="font-size:12px;color:var(--text-dim);">None noted</div>';
+
+  // Metrics
+  const metrics = r.metricsExtracted || {};
+  const metricEntries = Object.entries(metrics).filter(([k,v]) => v && v !== 'undefined');
+  if (metricEntries.length) {
+    document.getElementById('metricsWrap').style.display = 'block';
+    document.getElementById('metricsGrid').innerHTML = metricEntries.map(([k,v]) =>
+      `<div class="metric-box">
+        <div class="metric-key">${k.replace(/([A-Z])/g,' $1').replace(/_/g,' ').trim()}</div>
+        <div class="metric-val">${v}</div>
+      </div>`
+    ).join('');
+  }
+
+  document.getElementById('nextCheckIn').textContent = `🕐 Next check-in: ${r.nextCheckIn || 'As per usual schedule'}`;
+
+  // Alerts
+  const alerts = r.alerts || [];
+  document.getElementById('alertCountBadge').textContent = `${alerts.length} alert${alerts.length !== 1 ? 's' : ''}`;
+  document.getElementById('alertCountBadge').className   =
+    `badge ${alerts.some(a => a.priority === 'critical') ? 'badge-red' : alerts.some(a => a.priority === 'high') ? 'badge-amber' : 'badge-teal'}`;
+
+  document.getElementById('alertsList').innerHTML = alerts.length
+    ? alerts.map(a => `
+        <div class="alert-card ${a.priority}">
+          <div class="alert-header">
+            <span style="font-size:18px;">${PRIORITY_ICONS[a.priority] || 'ℹ️'}</span>
+            <span class="alert-priority ap-${a.priority}">${a.priority}</span>
+            <span class="alert-category">${a.category}</span>
+          </div>
+          <div class="alert-title">${a.title}</div>
+          <div class="alert-desc">${a.description}</div>
+          ${a.action ? `<div class="alert-action">→ ${a.action}</div>` : ''}
+        </div>`
+      ).join('')
+    : '<div style="text-align:center;padding:20px;color:var(--text-dim);">✓ No alerts — everything looks normal!</div>';
+
+  // Recommendations
+  const recs = r.recommendations || [];
+  document.getElementById('recommendationsList').innerHTML = recs.length
+    ? recs.map(rec => `
+        <div class="rec-card">
+          <span class="rec-badge rb-${rec.timeframe}">${rec.timeframe.replace('_',' ')}</span>
+          <div style="font-size:13px;line-height:1.6;color:var(--text);">${rec.text}</div>
+        </div>`
+      ).join('')
+    : '<div style="color:var(--text-dim);font-size:13px;">No specific recommendations.</div>';
+
+  // Scroll to results
+  document.getElementById('resultsState').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// Load history from activity log
+async function loadHistory() {
+  try {
+    const res  = await apiFetch('/api/activity?limit=20');
+    const logs = await res.json();
+    const jsonLogs = logs.filter(a => a.type === 'json_analysis');
+    const el   = document.getElementById('historyList');
+
+    if (!jsonLogs.length) {
+      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-dim);">No analyses run yet.</div>';
+      return;
+    }
+
+    const STATUS_COLORS = { good:'var(--green)', fair:'var(--teal)', concerning:'var(--amber)', critical:'var(--red)', unknown:'var(--text-dim)' };
+
+    el.innerHTML = jsonLogs.map(a => {
+      const statusMatch = a.message.match(/status:\s*(\w+)/i) || a.message.match(/^JSON analysis: (\w+)/);
+      const status      = statusMatch ? statusMatch[1].toLowerCase() : 'unknown';
+      const dotColor    = STATUS_COLORS[status] || 'var(--text-dim)';
+      return `
+        <div class="history-item">
+          <div class="history-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor};"></div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${a.message}</div>
+            <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px;">${fmtDateTime(a.timestamp)}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch { }
+}
+
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'}) + ' at ' +
+         d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+let _tt;
+function showToast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show '+(type||'success');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.className='', 3500);
+}
+
+// Set today's date as default
+document.getElementById('dataDate').value = new Date().toISOString().slice(0, 10);
+
+loadPatients();
+loadHistory();
+</script>
+</body>
+</html>

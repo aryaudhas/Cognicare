@@ -26,7 +26,7 @@ const DB_FILE  = path.join(DATA_DIR, 'db.json');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── DB helpers ────────────────────────────────────────────────
 function loadDB() {

@@ -10,10 +10,19 @@ const cors    = require('cors');
 const fs      = require('fs');
 const path    = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
 
 const app  = express();
-const PORT = process.env.PORT || 3000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const PORT               = process.env.PORT || 3000;
+const GEMINI_API_KEY     = process.env.GEMINI_API_KEY     || '';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+
+// ── OpenRouter config ─────────────────────────────────────────
+// Docs: https://openrouter.ai/docs
+// Free models: meta-llama/llama-3.1-8b-instruct:free, mistralai/mistral-7b-instruct:free
+// Swap OPENROUTER_MODEL to any model slug from openrouter.ai/models
+const OPENROUTER_BASE  = 'https://openrouter.ai/api/v1';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
 
 // Gemini client setup
 let genAI = null;
@@ -130,6 +139,37 @@ async function geminiAnalyzeImages(imageParts, prompt) {
   const result   = await model.generateContent(parts);
   const response = await result.response;
   return response.text();
+}
+
+// ── OpenRouter (LLM-2 auditor) ────────────────────────────────
+async function openRouterText(systemPrompt, userPrompt) {
+  if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY not set. Get a free key at openrouter.ai');
+
+  const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization':  `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type':   'application/json',
+      'HTTP-Referer':   'https://cognicare.app',   // shown in OpenRouter dashboard
+      'X-Title':        'CogniCare'
+    },
+    body: JSON.stringify({
+      model:      OPENROUTER_MODEL,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt   }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
 }
 
 // ── PATIENTS ──────────────────────────────────────────────────
@@ -382,6 +422,153 @@ Respond with a JSON array ONLY. No markdown, no extra text.`;
   }
 });
 
+// ── AI: DUAL-LLM DAILY SUMMARY ───────────────────────────────
+//
+//  Flow:
+//    1. Pull today's activity log for the patient from db.activity
+//    2. LLM-1 (Gemini)      → generate a narrative daily summary
+//    3. LLM-2 (OpenRouter)  → fact-check the summary, flag hallucinations,
+//                             return corrected summary + audit report
+//    4. Respond with all three artefacts so the frontend can show the audit trail
+//
+app.post('/api/summary/daily', async (req, res) => {
+  const { patientId } = req.body;
+  const patient = db.patients.find(p => p.id === patientId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // ── build today's activity list from the stored log ──────────
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayLogs = db.activity
+    .filter(a => a.patientId === patientId && new Date(a.timestamp) >= todayStart)
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  // Format each entry as "HH:MM — message"
+  const logLines = todayLogs.length
+    ? todayLogs.map(a => {
+        const t = new Date(a.timestamp);
+        const hh = String(t.getHours()).padStart(2, '0');
+        const mm = String(t.getMinutes()).padStart(2, '0');
+        return `[${hh}:${mm}] (${a.type}) ${a.message}`;
+      }).join('\n')
+    : 'No activity recorded today yet.';
+
+  const today = new Date().toLocaleDateString('en-CA', { dateStyle: 'long' });
+
+  try {
+    const startTime = Date.now();
+
+    // ── STEP 1: Gemini generates the first-pass summary ────────
+    const geminiPrompt = `You are a clinical AI assistant helping caregivers understand a patient's day.
+
+Patient: ${patient.name}, Age: ${patient.age}, Stage: ${patient.stage}
+Caregiver: ${patient.caregiver}
+Date: ${today}
+
+Today's raw activity log:
+${logLines}
+
+Write a concise, empathetic daily summary (3–5 sentences) covering:
+• Cognitive engagement (memory, conversations, games)
+• Physical activity and mobility
+• Mood and emotional state
+• Medication / meal adherence
+• Any events warranting caregiver attention
+
+Be factual. Only state what is directly supported by the log. Do not invent details.`;
+
+    let geminiSummary;
+    try {
+      geminiSummary = await geminiText(geminiPrompt);
+    } catch (e) {
+      return res.status(502).json({ error: `Gemini (LLM-1) failed: ${e.message}` });
+    }
+
+    // ── STEP 2: OpenRouter audits the Gemini summary ───────────
+    const auditorSystem = `You are a medical AI auditor. Your job is to rigorously fact-check
+another AI's summary of a patient's daily activity log.
+Respond ONLY with a valid JSON object — no markdown fences, no extra text.`;
+
+    const auditorUser = `Another AI (Gemini) wrote the following daily summary for patient "${patient.name}".
+Fact-check it against the raw activity log below.
+
+=== RAW ACTIVITY LOG ===
+${logLines}
+
+=== GEMINI SUMMARY TO AUDIT ===
+${geminiSummary}
+
+Return this exact JSON schema:
+{
+  "errors": [
+    {
+      "claim": "<exact phrase from summary>",
+      "issue": "<why unsupported or wrong>",
+      "severity": "high | medium | low"
+    }
+  ],
+  "hallucinated_facts": ["<fact invented by Gemini not found in log>"],
+  "omitted_important_events": ["<important log entry the summary missed>"],
+  "accuracy_score": <integer 0-100>,
+  "corrected_summary": "<revised 3-5 sentence summary 100% grounded in the log>"
+}
+
+If the summary is fully accurate: empty arrays for errors and hallucinated_facts,
+accuracy_score = 100, corrected_summary = the original summary.`;
+
+    let audit;
+    try {
+      const rawAudit = await openRouterText(auditorSystem, auditorUser);
+      // Strip accidental markdown fences
+      const clean = rawAudit.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const match = clean.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('OpenRouter did not return valid JSON');
+      audit = JSON.parse(match[0]);
+    } catch (e) {
+      // Graceful degradation — return Gemini summary without audit
+      audit = {
+        errors: [],
+        hallucinated_facts: [],
+        omitted_important_events: [],
+        accuracy_score: null,
+        corrected_summary: geminiSummary,
+        audit_error: e.message
+      };
+    }
+
+    // ── STEP 3: pick final summary ──────────────────────────────
+    const hasIssues   = audit.errors?.length > 0 || audit.hallucinated_facts?.length > 0;
+    const finalSummary = hasIssues
+      ? audit.corrected_summary || geminiSummary
+      : geminiSummary;
+
+    // Log the summary generation as an activity
+    logActivity(patientId, 'summary',
+      `Daily summary generated — accuracy ${audit.accuracy_score ?? '?'}% — ${hasIssues ? 'corrections applied' : 'no issues found'}`);
+
+    return res.json({
+      patientId,
+      patientName:      patient.name,
+      date:             today,
+      activityCount:    todayLogs.length,
+      geminiSummary,
+      audit,
+      finalSummary,
+      corrected:        hasIssues,
+      processingMs:     Date.now() - startTime,
+      models: {
+        generator: 'gemini-1.5-flash',
+        auditor:   OPENROUTER_MODEL
+      }
+    });
+
+  } catch (e) {
+    console.error('Daily summary error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CATCH-ALL ─────────────────────────────────────────────────
 app.get('*', (req, res) => {
  res.sendFile(path.join(__dirname, 'index.html'));
@@ -390,9 +577,11 @@ app.get('*', (req, res) => {
 // ── START ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log('');
-  console.log('  🧠  CogniCare AI Assistant (Gemini)');
+  console.log('  🧠  CogniCare AI Assistant');
   console.log(`  ●   http://localhost:${PORT}`);
-  console.log(`  🔑  Gemini API Key: ${GEMINI_API_KEY ? '✓ Set' : '✗ Missing — set GEMINI_API_KEY'}`);
-  console.log(`  💡  Get your FREE key at: aistudio.google.com`);
+  console.log(`  🔑  Gemini API Key:     ${GEMINI_API_KEY     ? '✓ Set' : '✗ Missing — set GEMINI_API_KEY'}`);
+  console.log(`  🔑  OpenRouter API Key: ${OPENROUTER_API_KEY ? '✓ Set' : '✗ Missing — set OPENROUTER_API_KEY'}`);
+  console.log(`  🤖  Auditor model:      ${OPENROUTER_MODEL}`);
+  console.log(`  💡  OpenRouter key:     openrouter.ai/keys`);
   console.log('');
 });

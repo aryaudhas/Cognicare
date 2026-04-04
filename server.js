@@ -34,6 +34,18 @@ const DB_FILE  = path.join(DATA_DIR, 'db.json');
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+
+// 1. MANUALLY serve landing.html at the root URL
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'landing.html'));
+});
+
+// 2. SERVE STATIC FILES (With index: false to prevent auto-loading dashboard)
+app.use(express.static(__dirname, { index: false }));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+
+
 // Serve all HTML/CSS/JS files from the project root
 app.use(express.static(__dirname));
 

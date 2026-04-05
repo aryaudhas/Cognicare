@@ -8,11 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .patient-card { background:white;border:1px solid var(--border);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow);transition:all .2s;cursor:pointer; }
-    .patient-card:hover { transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--teal); }
-    .patient-avatar { width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:white;flex-shrink:0; }
-    .patients-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px; }
-    .stage-badge { padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700; }
+    .patient-card { background:white; border:1px solid var(--border); border-radius:20px; padding:28px; box-shadow:var(--shadow); transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor:pointer; position:relative; overflow:hidden; }
+    .patient-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:var(--teal); }
+    .patient-card::after { content:''; position:absolute; top:0; right:0; width:4px; height:100%; background:var(--teal); opacity:0; transition:opacity 0.3s; }
+    .patient-card:hover::after { opacity:1; }
+    .patient-avatar { width:64px; height:64px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; color:white; flex-shrink:0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .patients-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:24px; }
+    .stage-badge { padding:6px 12px; border-radius:24px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
     .stage-mild     { background:var(--green-light); color:#166534; }
     .stage-moderate { background:var(--amber-light); color:#92400e; }
     .stage-severe   { background:var(--red-light);   color:#991b1b; }
@@ -121,20 +123,22 @@ function renderPatients(){
     return;
   }
   document.getElementById('patientsGrid').innerHTML=patients.map((p,i)=>`
-    <div class="patient-card" onclick="viewPatient('${p.id}')">
-      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
+    <div class="patient-card animate-fade-up" style="animation-delay:${i*0.1}s" onclick="viewPatient('${p.id}')">
+      <div style="display:flex; align-items:flex-start; gap:20px; margin-bottom:20px;">
         <div class="patient-avatar" style="background:${AVATAR_COLORS[i%6]};">${p.name.charAt(0)}</div>
         <div style="flex:1;">
-          <div style="font-family:'DM Serif Display',serif;font-size:18px;">${p.name}</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${p.age ? `Age ${p.age}` : ''} ${p.age&&p.caregiver?'·':''} ${p.caregiver||''}</div>
+          <div style="font-family:'DM Serif Display',serif; font-size:20px; color:var(--text);">${p.name}</div>
+          <div style="font-size:14px; color:var(--text-muted); margin-top:4px; font-weight:500;">
+            ${p.age ? `Age ${p.age}` : ''} ${p.age&&p.caregiver?'·':''} ${p.caregiver||''}
+          </div>
         </div>
         <span class="stage-badge stage-${p.stage?.toLowerCase()||'moderate'}">${p.stage||'Moderate'}</span>
       </div>
-      ${p.notes?`<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${p.notes}</div>`:''}
-      <div style="display:flex;gap:8px;">
-        <a href="analyze.html" onclick="event.stopPropagation()" class="btn btn-secondary" style="font-size:11px;padding:6px 12px;">🔍 Analyze</a>
-        <a href="reminders.html" onclick="event.stopPropagation()" class="btn btn-secondary" style="font-size:11px;padding:6px 12px;">🔔 Reminders</a>
-        <a href="chat.html" onclick="event.stopPropagation()" class="btn btn-primary" style="font-size:11px;padding:6px 12px;">💬 Chat</a>
+      ${p.notes?`<div style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; background:var(--bg-panel); padding:12px; border-radius:12px;">${p.notes}</div>`:''}
+      <div style="display:flex; gap:10px;">
+        <a href="analyze.html" onclick="event.stopPropagation()" class="btn btn-secondary" style="flex:1; font-size:12px; padding:10px;">🔍 Analyze</a>
+        <a href="reminders.html" onclick="event.stopPropagation()" class="btn btn-secondary" style="flex:1; font-size:12px; padding:10px;">🔔 Reminders</a>
+        <a href="chat.html" onclick="event.stopPropagation()" class="btn btn-primary" style="flex:1; font-size:12px; padding:10px;">💬 Chat</a>
       </div>
     </div>`).join('');
 }

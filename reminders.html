@@ -8,22 +8,22 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .reminder-row { display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s; }
+    .reminder-row { display:flex; align-items:center; gap:16px; padding:18px 24px; border-bottom:1px solid var(--border); transition:all 0.2s; }
     .reminder-row:last-child { border-bottom:none; }
-    .reminder-row:hover { background:#f8fafc; }
-    .toggle { position:relative;width:44px;height:24px;flex-shrink:0; }
-    .toggle input { opacity:0;width:0;height:0; }
-    .toggle-slider { position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:.3s; }
-    .toggle-slider::before { content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2); }
-    .toggle input:checked+.toggle-slider { background:var(--teal); }
-    .toggle input:checked+.toggle-slider::before { transform:translateX(20px); }
-    .day-btn { padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-input);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text-muted); }
-    .day-btn.active { background:var(--teal);color:white;border-color:var(--teal); }
-    .type-select-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px; }
-    .type-option { padding:10px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:600; }
-    .type-option:hover { border-color:var(--teal); }
-    .type-option.selected { border-color:var(--teal);background:var(--teal-light);color:var(--teal-dark); }
-    .type-icon-big { font-size:24px;display:block;margin-bottom:4px; }
+    .reminder-row:hover { background:var(--bg-panel); }
+    .toggle { position:relative; width:48px; height:26px; flex-shrink:0; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:24px; cursor:pointer; transition:0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .toggle-slider::before { content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:white; border-radius:50%; transition:0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+    .toggle input:checked+.toggle-slider { background:var(--teal); box-shadow: 0 0 12px var(--teal-glow); }
+    .toggle input:checked+.toggle-slider::before { transform:translateX(22px); }
+    .day-btn { padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:white; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s; color:var(--text-muted); font-family:var(--font-mono); }
+    .day-btn.active { background:var(--teal); color:white; border-color:var(--teal); box-shadow: 0 2px 8px var(--teal-glow); }
+    .type-select-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    .type-option { padding:14px 10px; border:2px solid var(--border); border-radius:14px; text-align:center; cursor:pointer; transition:all 0.2s; font-size:13px; font-weight:700; background:white; }
+    .type-option:hover { border-color:var(--teal); transform:translateY(-2px); }
+    .type-option.selected { border-color:var(--teal); background:var(--teal-light); color:var(--teal-dark); box-shadow: 0 4px 12px var(--teal-glow); }
+    .type-icon-big { font-size:28px; display:block; margin-bottom:6px; }
   </style>
 </head>
 <body>
@@ -174,12 +174,12 @@ function renderReminders(){
     return;
   }
 
-  document.getElementById('remindersGrid').innerHTML=Object.entries(byType).map(([type,rems])=>`
-    <div class="card">
-      <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-        <div style="width:36px;height:36px;border-radius:9px;background:${TYPE_COLORS[type]||'#f0f0f0'};display:flex;align-items:center;justify-content:center;font-size:20px;">${TYPE_ICONS[type]||'📌'}</div>
-        <div style="font-weight:700;font-size:15px;">${TYPE_LABELS[type]||type}</div>
-        <span class="badge badge-teal" style="margin-left:auto;">${rems.length}</span>
+  document.getElementById('remindersGrid').innerHTML=Object.entries(byType).map(([type,rems], idx)=>`
+    <div class="card animate-fade-up" style="animation-delay:${idx*0.1}s">
+      <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; background:var(--bg-panel);">
+        <div style="width:40px; height:40px; border-radius:12px; background:${TYPE_COLORS[type]||'#f0f0f0'}; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:var(--shadow-sm);">${TYPE_ICONS[type]||'📌'}</div>
+        <div style="font-weight:800; font-size:16px; color:var(--text);">${TYPE_LABELS[type]||type}</div>
+        <span class="badge badge-teal" style="margin-left:auto; font-weight:800;">${rems.length}</span>
       </div>
       ${rems.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>`
         <div class="reminder-row">
@@ -188,11 +188,16 @@ function renderReminders(){
             <span class="toggle-slider"></span>
           </label>
           <div style="flex:1;">
-            <div style="font-weight:600;font-size:13px;color:${r.active?'var(--text)':'var(--text-dim)'};">${r.label}</div>
-            <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px;">${r.time} · ${r.days.join(', ')}</div>
+            <div style="font-weight:700; font-size:14px; color:${r.active?'var(--text)':'var(--text-dim)'};">${r.label}</div>
+            <div style="font-size:12px; color:var(--text-dim); font-family:var(--font-mono); margin-top:4px; display:flex; align-items:center; gap:8px;">
+              <span style="background:var(--bg-panel); padding:2px 6px; border-radius:4px; color:var(--teal-dark); font-weight:700;">${r.time}</span>
+              <span>${r.days.join(', ')}</span>
+            </div>
           </div>
-          <button onclick="openEditModal('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);padding:4px 6px;border-radius:6px;" title="Edit">✎</button>
-          <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);padding:4px 6px;border-radius:6px;" title="Delete">🗑</button>
+          <div style="display:flex; gap:4px;">
+            <button onclick="openEditModal('${r.id}')" style="background:var(--bg-input); border:1px solid var(--border); cursor:pointer; font-size:14px; color:var(--text-muted); padding:8px; border-radius:10px; transition:all 0.2s;" title="Edit">✎</button>
+            <button onclick="deleteReminder('${r.id}')" style="background:var(--bg-input); border:1px solid var(--border); cursor:pointer; font-size:14px; color:var(--text-muted); padding:8px; border-radius:10px; transition:all 0.2s;" title="Delete">🗑</button>
+          </div>
         </div>`).join('')}
     </div>`).join('');
 }

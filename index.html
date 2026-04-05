@@ -6,7 +6,7 @@
   <title>CogniCare — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/style.css"/>
   <style>
     /* Live alert notification banner */
     .alert-banner {
@@ -80,25 +80,56 @@
   </style>
 </head>
 <body>
-<script src="config.js"></script>
-<script src="nav.js"></script>
+<script src="/config.js"></script>
+<script src="/nav.js"></script>
 
 <div class="page-wrap">
-
   <!-- Header -->
-  <div style="margin-bottom:32px;animation:fadeUp .5s ease both;">
-    <div class="section-label">Overview</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;">
+  <div style="margin-bottom:40px; animation:fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;">
+    <div class="section-label">Caregiver Dashboard</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
       <h1 class="section-title">Good <span id="timeOfDay">morning</span>, Caregiver</h1>
-      <div style="font-size:13px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="dashClock"></div>
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-secondary" onclick="generateDailySummary()">
+          <span class="icon">✨</span> AI Summary
+        </button>
+        <a href="/caregiver.html" class="btn btn-primary">
+          <span class="icon">👤</span> Manage Patients
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Stat cards -->
-  <div class="stat-grid" style="animation:fadeUp .5s .1s ease both;">
-    <div class="stat-card teal"><div class="stat-icon">👤</div><div class="stat-num" id="s-patients">—</div><div class="stat-label">Patients Monitored</div></div>
-    <div class="stat-card amber"><div class="stat-icon">🔔</div><div class="stat-num" id="s-reminders">—</div><div class="stat-label">Active Reminders</div></div>
-    <div class="stat-card blue"><div class="stat-icon">📊</div><div class="stat-num" id="s-today">—</div><div class="stat-label">Events Today</div></div>
+  <!-- AI Summary Section (Hidden by default) -->
+  <div id="summarySection" class="card card-pad" style="display:none; margin-bottom:32px; border-left: 4px solid var(--teal); background: var(--teal-light); animation: fadeUp 0.4s ease both;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div style="font-weight:700; color:var(--teal-dark); display:flex; align-items:center; gap:8px; font-size:14px; letter-spacing:0.05em; text-transform:uppercase;">
+        <span class="icon">🧠</span> AI Care Audit
+      </div>
+      <button onclick="document.getElementById('summarySection').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:20px; color:var(--text-dim);">×</button>
+    </div>
+    <div id="summaryText" style="font-size:15px; line-height:1.8; color:var(--text); max-width:900px;">
+      Generating summary...
+    </div>
+  </div>
+
+  <!-- Stat Grid -->
+  <div class="stat-grid" style="animation:fadeUp 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;">
+    <div class="stat-card teal">
+      <div class="stat-icon">👤</div>
+      <div class="stat-num" id="s-patients">—</div>
+      <div class="stat-label">Patients Monitored</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-icon">🔔</div>
+      <div class="stat-num" id="s-reminders">—</div>
+      <div class="stat-label">Active Reminders</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">📊</div>
+      <div class="stat-num" id="s-today">—</div>
+      <div class="stat-label">Events Today</div>
+    </div>
     <div class="stat-card" style="border-color:var(--red-light);" id="alertCard">
       <div class="stat-icon">🚨</div>
       <div class="stat-num" id="s-alerts" style="color:var(--red);">0</div>
@@ -106,39 +137,77 @@
     </div>
   </div>
 
-  <!-- Main grid -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;animation:fadeUp .5s .2s ease both;">
-
-    <!-- Today's reminders -->
-    <div class="card card-pad">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div><div class="section-label" style="margin-bottom:2px;">Scheduled</div><div style="font-family:var(--font-display);font-size:18px;">Today's Reminders</div></div>
-        <a href="reminders.html" class="btn btn-secondary" style="font-size:12px;padding:7px 14px;">Manage →</a>
+  <!-- Main Grid -->
+  <div style="display:grid; grid-template-columns: 1fr 380px; gap:32px; animation:fadeUp 0.6s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;">
+    
+    <!-- Left Column: Reminders & Activity -->
+    <div style="display:flex; flex-direction:column; gap:32px;">
+      <!-- Reminders -->
+      <div class="card">
+        <div class="card-pad" style="border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="font-family:var(--font-display); font-size:20px;">Upcoming Reminders</h2>
+          <a href="/reminders.html" style="font-size:13px; color:var(--teal); font-weight:600;">View All →</a>
+        </div>
+        <div id="todayReminders" style="padding:16px;">
+          <div style="text-align:center; padding:40px; color:var(--text-dim);">Loading...</div>
+        </div>
       </div>
-      <div id="todayReminders"><div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div></div>
+
+      <!-- Activity Feed -->
+      <div class="card">
+        <div class="card-pad" style="border-bottom:1px solid var(--border);">
+          <h2 style="font-family:var(--font-display); font-size:20px;">Recent Activity</h2>
+        </div>
+        <div id="activityFeed" style="padding:24px;">
+          <div style="text-align:center; padding:40px; color:var(--text-dim);">Loading...</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Activity feed -->
-    <div class="card card-pad">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div><div class="section-label" style="margin-bottom:2px;">Recent</div><div style="font-family:var(--font-display);font-size:18px;">Activity Log</div></div>
+    <!-- Right Column: Quick Actions & Support -->
+    <div style="display:flex; flex-direction:column; gap:32px;">
+      <!-- Quick Actions -->
+      <div class="card card-pad">
+        <h2 style="font-family:var(--font-display); font-size:20px; margin-bottom:20px;">Quick Actions</h2>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <a href="/patient.html" class="btn btn-secondary w-full" style="justify-content:flex-start;">
+            <span class="icon">👁️</span> Open Patient View
+          </a>
+          <a href="/analyze.html" class="btn btn-secondary w-full" style="justify-content:flex-start;">
+            <span class="icon">🔍</span> Analyze Behavior
+          </a>
+          <a href="/chat.html" class="btn btn-secondary w-full" style="justify-content:flex-start;">
+            <span class="icon">💬</span> AI Assistant
+          </a>
+          <button class="btn btn-secondary w-full" style="justify-content:flex-start;" onclick="sendTestAlert()">
+            <span class="icon">🚨</span> Trigger Test Alert
+          </button>
+        </div>
       </div>
-      <div id="activityFeed"><div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div></div>
+
+      <!-- Caregiver Support -->
+      <div class="card card-pad" style="background: linear-gradient(135deg, #f0fdfa, #eff6ff); border: none; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 80px; opacity: 0.05; transform: rotate(15deg);">🧠</div>
+        <h2 style="font-family:var(--font-display); font-size:18px; margin-bottom:12px; color:var(--teal-dark);">Caregiver Support</h2>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">
+          Feeling overwhelmed? Our AI can suggest self-care strategies or help you navigate difficult behaviors.
+        </p>
+        <a href="/chat.html?mode=caregiver" class="btn btn-primary w-full" style="justify-content:center;">Talk to Support</a>
+      </div>
+
+      <!-- System Status -->
+      <div class="card card-pad" style="background: var(--bg-panel); border: 1px dashed var(--border);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <div class="nav-status-dot"></div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">System Monitoring</div>
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+          AI analysis active. Real-time alert stream connected.
+        </div>
+      </div>
     </div>
 
   </div>
-
-  <!-- Quick actions -->
-  <div style="margin-top:20px;animation:fadeUp .5s .3s ease both;">
-    <div class="section-label" style="margin-bottom:14px;">Quick Actions</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
-      <a href="patient.html"   style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">👁️</div><div style="font-weight:600;font-size:14px;">Patient View</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Open patient interface</div></a>
-      <a href="analyze.html"   style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">🔍</div><div style="font-weight:600;font-size:14px;">Analyze Image</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">AI visual assessment</div></a>
-      <a href="jsoninput.html" style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">📋</div><div style="font-weight:600;font-size:14px;">JSON Data</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Analyze health data</div></a>
-      <a href="chat.html"      style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:all .2s;box-shadow:var(--shadow);" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:30px;margin-bottom:8px;">💬</div><div style="font-weight:600;font-size:14px;">AI Assistant</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ask care questions</div></a>
-    </div>
-  </div>
-
 </div>
 
 <!-- Floating alert bell -->
@@ -160,7 +229,7 @@
     <div style="text-align:center;padding:30px;color:var(--text-dim);">No alerts yet.</div>
   </div>
   <div class="ahp-footer">
-    <a href="patient.html" class="btn btn-primary" style="width:100%;justify-content:center;font-size:12px;padding:8px;">Open Patient View →</a>
+    <a href="/patient.html" class="btn btn-primary" style="width:100%;justify-content:center;font-size:12px;padding:8px;">Open Patient View →</a>
   </div>
 </div>
 
@@ -351,7 +420,7 @@ async function loadDashboard(){
             ${isNext?'<span class="badge badge-teal">NEXT</span>':''}
           </div>`;
         }).join('')
-      :'<div style="text-align:center;padding:20px;color:var(--text-dim);">No reminders. <a href="reminders.html" style="color:var(--teal);">Add one →</a></div>';
+      :'<div style="text-align:center;padding:20px;color:var(--text-dim);">No reminders. <a href="/reminders.html" style="color:var(--teal);">Add one →</a></div>';
 
     document.getElementById('activityFeed').innerHTML=activity.length
       ?activity.map(a=>`<div class="tl-item"><div class="tl-dot-col"><div class="tl-dot" style="background:${ACT_COLORS[a.type]||'var(--text-dim)'}"></div><div class="tl-line"></div></div><div class="tl-time">${fmtTime(a.timestamp)}</div><div class="tl-text">${a.message}</div></div>`).join('')
@@ -380,12 +449,33 @@ function fmtTime(iso){
 let _tt;
 function showToast(msg,type='success'){
   const el=document.getElementById('toast');
-  el.textContent=msg; el.className='show '+(type||'success');
-  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000);
+  el.textContent=msg; el.className = 'show '+(type||'success');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.className='',3000);
 }
 
 // Request notification permission
 if(Notification.permission==='default') Notification.requestPermission();
+
+async function generateDailySummary() {
+  const section = document.getElementById('summarySection');
+  const text = document.getElementById('summaryText');
+  section.style.display = 'block';
+  text.innerHTML = '<div style="display:flex; align-items:center; gap:12px;"><div class="nav-status-dot"></div> Analyzing daily logs and patient data...</div>';
+  
+  try {
+    const res = await apiFetch('/api/summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId: 'P001' }) // Default for demo
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    text.innerHTML = data.summary.replace(/\n/g, '<br>');
+  } catch (e) {
+    console.error(e);
+    text.innerHTML = `<div style="color:var(--red); font-weight:600;">Error generating summary: ${e.message}</div><div style="font-size:13px; margin-top:8px;">Please ensure your GEMINI_API_KEY is configured in the Secrets panel.</div>`;
+  }
+}
 
 // Init
 loadDashboard();

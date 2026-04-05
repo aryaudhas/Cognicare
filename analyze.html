@@ -45,34 +45,36 @@
 <script src="nav.js"></script>
 
 <div class="page-wrap">
-  <div style="margin-bottom:28px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
+  <div style="margin-bottom:40px; animation:fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
       <div>
         <div class="section-label">AI Visual Assessment</div>
-        <h1 class="section-title">Analyze Image or Video</h1>
+        <h1 class="section-title">Analyze Behavior & Safety</h1>
       </div>
       <div id="aiStatusBadge" class="ai-badge err">Checking AI...</div>
     </div>
-    <p style="color:var(--text-muted);margin-top:6px;font-size:14px;">Upload a photo, video, or paste a YouTube link. AI will analyze behavioral and physical indicators and provide a structured care report.</p>
+    <p style="color:var(--text-muted); margin-top:8px; font-size:15px; max-width:800px; line-height:1.6;">
+      Upload a photo, video, or paste a YouTube link. Our AI will analyze behavioral patterns, identify physical indicators, and detect potential safety hazards in the environment.
+    </p>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; animation:fadeUp 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;">
 
     <!-- Left: Upload panel -->
     <div>
-      <div class="card card-pad" style="margin-bottom:16px;">
-        <div style="font-family:var(--font-display);font-size:18px;margin-bottom:16px;">Upload Media</div>
+      <div class="card card-pad" style="margin-bottom:24px; position:sticky; top:100px;">
+        <h2 style="font-family:var(--font-display); font-size:22px; margin-bottom:24px;">Upload Media</h2>
 
         <!-- Patient selector -->
         <div class="form-group">
-          <label class="form-label">Patient</label>
-          <select class="form-select" id="patientSelect"></select>
+          <label class="form-label">Select Patient</label>
+          <select class="form-select" id="patientSelect" style="padding:12px; font-size:15px;"></select>
         </div>
 
         <!-- Source toggle -->
         <div class="form-group">
-          <label class="form-label">Source</label>
-          <div class="source-toggle">
+          <label class="form-label">Analysis Source</label>
+          <div class="source-toggle" style="height:44px;">
             <button class="source-btn active" onclick="setSource('upload',this)">📁 Upload File</button>
             <button class="source-btn"        onclick="setSource('youtube',this)">▶️ YouTube URL</button>
           </div>
@@ -83,16 +85,22 @@
           <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
             ondragover="event.preventDefault();this.classList.add('drag')"
             ondragleave="this.classList.remove('drag')"
-            ondrop="handleDrop(event)">
-            <div style="font-size:40px;margin-bottom:10px;">📷</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:5px;">Drop image or video here</div>
-            <div style="font-size:13px;color:var(--text-muted);">or click to browse — JPG, PNG, MP4, MOV</div>
+            ondrop="handleDrop(event)"
+            style="padding:60px 40px; border-width:3px;">
+            <div style="font-size:48px; margin-bottom:16px;">📷</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px;">Drop image or video here</div>
+            <div style="font-size:14px; color:var(--text-muted);">or click to browse from your device</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">JPG, PNG, MP4, MOV</div>
           </div>
           <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-          <div class="preview-grid" id="previewGrid"></div>
-          <div id="progressWrap" style="display:none;margin-top:12px;">
-            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;" id="progressLabel">Processing...</div>
-            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+          <div class="preview-grid" id="previewGrid" style="margin-top:20px; gap:12px;"></div>
+          
+          <div id="progressWrap" style="display:none; margin-top:20px; padding:16px; background:var(--bg-panel); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+              <div style="font-size:13px; font-weight:600; color:var(--text-muted);" id="progressLabel">Processing...</div>
+              <div style="font-size:13px; font-weight:700; color:var(--teal);" id="progressPercent">0%</div>
+            </div>
+            <div class="progress-bar" style="height:6px; background:rgba(0,0,0,0.05);"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
           </div>
         </div>
 
@@ -384,9 +392,11 @@ async function runAnalysis() {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Analysis failed');
+    if (data.error) throw new Error(data.error);
+    if (!data.success) throw new Error('Analysis failed');
 
     document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressPercent').textContent = '100%';
     renderResults(data.analysis, data.aiUsed);
 
     // Show hazard toast if any detected

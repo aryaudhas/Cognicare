@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Assistant — CogniCare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body.chat-body { display:flex;flex-direction:column;height:100vh;overflow:hidden; }
+    #chatLayout { display:flex;flex:1;overflow:hidden; }
+    #chatSidebar { width:280px;flex-shrink:0;background:white;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden; }
+    #chatMain { flex:1;display:flex;flex-direction:column;overflow:hidden; }
+    #messages { flex:1; overflow-y:auto; padding:32px; display:flex; flex-direction:column; gap:20px; background:var(--bg-panel); }
+    #inputArea { padding:24px 32px; background:white; border-top:1px solid var(--border); display:flex; gap:16px; align-items:flex-end; box-shadow: 0 -4px 20px rgba(0,0,0,0.02); }
+    #msgInput { flex:1; padding:16px 20px; border:2px solid var(--border); border-radius:16px; font-family:var(--font-body); font-size:15px; outline:none; resize:none; max-height:160px; transition:all 0.2s; line-height:1.5; }
+    #msgInput:focus { border-color:var(--teal); box-shadow: 0 0 0 4px var(--teal-light); }
+    .mode-btn { flex:1; padding:12px; border:none; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s; font-family:var(--font-body); display:flex; align-items:center; justify-content:center; gap:8px; }
+    .mode-btn.active { background:var(--teal); color:white; box-shadow: 0 4px 12px var(--teal-glow); }
+    .mode-btn:not(.active) { background:var(--bg-input); color:var(--text-muted); }
+    .mode-btn:not(.active):hover { background:var(--border); color:var(--text); }
+    .suggested-q { padding:12px 16px; background:white; border:1px solid var(--border); border-radius:12px; font-size:13px; cursor:pointer; margin-bottom:10px; color:var(--text); transition:all 0.2s; line-height:1.4; }
+    .suggested-q:hover { border-color:var(--teal); color:var(--teal-dark); background:var(--teal-light); transform: translateX(4px); }
+    .typing-indicator { display:flex; align-items:center; gap:6px; padding:16px 20px; background:white; border:1px solid var(--border); border-radius:20px 20px 20px 4px; width:fit-content; margin-bottom:12px; box-shadow: var(--shadow-sm); }
+    .typing-dot { width:6px;height:6px;border-radius:50%;background:var(--text-dim);animation:typingBounce 1.2s infinite; }
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes typingBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    .msg-time { font-size:10px;color:var(--text-dim);margin-top:3px;text-align:right; }
+    .msg-time.ai { text-align:left; }
+    .patient-note { background:var(--amber-light);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#92400e;margin-bottom:14px; }
+  </style>
+</head>
+<body class="chat-body">
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div id="chatLayout">
+
+  <!-- Sidebar -->
+  <div id="chatSidebar">
+    <div style="padding:16px;border-bottom:1px solid var(--border);">
+      <div style="font-family:'DM Serif Display',serif;font-size:16px;margin-bottom:12px;">Mode</div>
+      <div style="display:flex;gap:6px;">
+        <button class="mode-btn active" id="caregiverModeBtn" onclick="setMode('caregiver')">👩 Caregiver</button>
+        <button class="mode-btn" id="patientModeBtn"   onclick="setMode('patient')">👤 Patient</button>
+      </div>
+    </div>
+
+    <div style="padding:16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Patient</div>
+      <select class="form-select" id="chatPatient" style="font-size:12px;" onchange="loadPatientContext()"></select>
+    </div>
+
+    <div style="padding:16px;flex:1;overflow-y:auto;">
+      <div style="font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">Suggested Questions</div>
+      <div id="suggestedQuestions"></div>
+    </div>
+
+    <div style="padding:14px;border-top:1px solid var(--border);">
+      <button onclick="clearChat()" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-muted);cursor:pointer;font-family:var(--font-body);">🗑 Clear conversation</button>
+    </div>
+  </div>
+
+  <!-- Main chat -->
+  <div id="chatMain">
+    <!-- Header -->
+    <div style="padding:20px 32px; background:white; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:20px;">
+      <div style="width:48px; height:48px; background:var(--teal-light); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 4px 12px rgba(20, 184, 166, 0.1);">🧠</div>
+      <div>
+        <div style="font-weight:800; font-size:17px; color:var(--text);" id="chatHeaderTitle">CogniCare AI — Caregiver Mode</div>
+        <div style="font-size:13px; color:var(--text-muted); margin-top:2px;" id="chatHeaderSub">Ask questions about care, symptoms, and strategies</div>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <div class="nav-status-dot"></div>
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-dark);">AI Active</div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages">
+      <div class="chat-bubble ai" id="welcomeMsg">
+        Hello! I'm your CogniCare AI assistant. I'm here to help you provide the best care possible.<br><br>
+        You can ask me about <strong>behavioral changes</strong>, <strong>communication strategies</strong>, <strong>medication questions</strong>, <strong>daily care routines</strong>, or anything else related to supporting someone with cognitive decline. What would you like to know?
+      </div>
+      <div class="msg-time ai">Now</div>
+    </div>
+
+    <!-- Input -->
+    <div id="inputArea">
+      <textarea id="msgInput" rows="1" placeholder="Type your message..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="btn btn-primary" onclick="sendMessage()" id="sendBtn" style="flex-shrink:0;padding:12px 20px;">Send ↑</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+<script>
+let mode='caregiver', patientId='P001', chatHistory=[], isTyping=false;
+
+const SUGGESTED = {
+  caregiver: [
+    "How do I handle sundowning behavior?",
+    "What are signs of pain in someone who can't communicate?",
+    "How can I reduce medication confusion?",
+    "What activities help with cognitive stimulation?",
+    "How do I respond when they don't recognize me?",
+    "Tips for reducing caregiver burnout",
+    "How to handle repetitive questions patiently",
+    "What stage of decline shows aggression?",
+  ],
+  patient: [
+    "I'm feeling confused",
+    "What day is it today?",
+    "I need to take my medicine",
+    "I'm feeling lonely",
+    "Tell me something nice",
+    "I can't remember if I ate",
+    "I want to call my family",
+    "I'm not feeling well",
+  ]
+};
+
+async function loadPatients(){
+  try{
+    const res=await apiFetch('/api/patients');
+    const patients=await res.json();
+    document.getElementById('chatPatient').innerHTML=patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    patientId=patients[0]?.id||'P001';
+  }catch{}
+  renderSuggestions();
+}
+
+function renderSuggestions(){
+  document.getElementById('suggestedQuestions').innerHTML=SUGGESTED[mode].map(q=>`
+    <div class="suggested-q" onclick="useSuggestion('${q}')">${q}</div>`).join('');
+}
+
+function useSuggestion(q){
+  document.getElementById('msgInput').value=q;
+  sendMessage();
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('caregiverModeBtn').classList.toggle('active',m==='caregiver');
+  document.getElementById('patientModeBtn').classList.toggle('active',m==='patient');
+  document.getElementById('chatHeaderTitle').textContent=`CogniCare AI — ${m==='caregiver'?'Caregiver':'Patient'} Mode`;
+  document.getElementById('chatHeaderSub').textContent=m==='caregiver'
+    ?'Ask questions about care, symptoms, and strategies'
+    :'Simple, gentle conversation and reminders';
+  renderSuggestions();
+  clearChat();
+  // Add mode-appropriate welcome
+  const welcome=m==='patient'
+    ?`Hello! I'm here with you. How are you feeling today? 😊`
+    :`Switched to caregiver mode. I can help you with care strategies, understanding behavioral changes, and managing day-to-day challenges.`;
+  addMessage(welcome,'ai');
+}
+
+function loadPatientContext(){ patientId=document.getElementById('chatPatient').value; }
+
+function clearChat(){
+  chatHistory=[];
+  const msgs=document.getElementById('messages');
+  msgs.innerHTML='';
+}
+
+function autoResize(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,140)+'px';
+}
+
+function handleKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMessage(); }
+}
+
+async function sendMessage(){
+  if(isTyping)return;
+  const input=document.getElementById('msgInput');
+  const msg=input.value.trim();
+  if(!msg)return;
+  input.value=''; input.style.height='auto';
+
+  addMessage(msg,'user');
+  chatHistory.push({role:'user',content:msg});
+
+  isTyping=true;
+  const typingEl=addTyping();
+
+  try{
+    const res=await apiFetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:chatHistory,patientId,mode})
+    });
+    const data=await res.json();
+    typingEl.remove();
+    const reply=data.response||"I'm here to help. Could you tell me more?";
+    addMessage(reply,'ai');
+    chatHistory.push({role:'assistant',content:reply});
+  }catch(e){
+    typingEl.remove();
+    addMessage("I'm sorry, I'm having trouble connecting right now. Please try again.","ai");
+  }
+  isTyping=false;
+}
+
+function addMessage(text, role){
+  const msgs=document.getElementById('messages');
+  const wrap=document.createElement('div');
+  wrap.style.display='flex';
+  wrap.style.flexDirection='column';
+  wrap.style.alignItems=role==='user'?'flex-end':'flex-start';
+  wrap.style.marginBottom='8px';
+  wrap.style.animation='fadeUp 0.3s ease both';
+
+  const bubble=document.createElement('div');
+  bubble.className=`chat-bubble ${role}`;
+  
+  // Simple Markdown-to-HTML helper
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+    .replace(/\n/g, '<br>') // Newlines
+    .replace(/^- (.*)/gm, '• $1') // List items
+    .replace(/### (.*)/g, '<div style="font-weight:800; font-size:16px; margin:12px 0 6px;">$1</div>'); // Headers
+
+  bubble.innerHTML = html;
+
+  const time=document.createElement('div');
+  time.className=`msg-time ${role}`;
+  time.style.padding = '0 12px';
+  time.textContent=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+
+  wrap.appendChild(bubble);
+  wrap.appendChild(time);
+  msgs.appendChild(wrap);
+  msgs.scrollTop=msgs.scrollHeight;
+  return wrap;
+}
+
+function addTyping(){
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');
+  div.className='typing-indicator';
+  div.innerHTML='<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+let _tt;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'success');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000);
+}
+
+loadPatients();
+</script>
+</body>
+</html>

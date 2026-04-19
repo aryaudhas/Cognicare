@@ -1,0 +1,5 @@
+{
+  "name": "CogniCare",
+  "description": "AI-powered assistant for cognitive decline care, featuring dual-LLM verification, image analysis, and real-time alerts.",
+  "requestFramePermissions": ["camera"]
+}

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reminders — CogniCare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .reminder-row { display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s; }
+    .reminder-row:last-child { border-bottom:none; }
+    .reminder-row:hover { background:#f8fafc; }
+    .toggle { position:relative;width:44px;height:24px;flex-shrink:0; }
+    .toggle input { opacity:0;width:0;height:0; }
+    .toggle-slider { position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:.3s; }
+    .toggle-slider::before { content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2); }
+    .toggle input:checked+.toggle-slider { background:var(--teal); }
+    .toggle input:checked+.toggle-slider::before { transform:translateX(20px); }
+    .day-btn { padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-input);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text-muted); }
+    .day-btn.active { background:var(--teal);color:white;border-color:var(--teal); }
+    .type-select-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px; }
+    .type-option { padding:10px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:600; }
+    .type-option:hover { border-color:var(--teal); }
+    .type-option.selected { border-color:var(--teal);background:var(--teal-light);color:var(--teal-dark); }
+    .type-icon-big { font-size:24px;display:block;margin-bottom:4px; }
+  </style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+  <div class="section-head" style="margin-bottom:28px;">
+    <div>
+      <div class="section-label">Care Schedule</div>
+      <h1 class="section-title">Reminders</h1>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-secondary" onclick="suggestReminders()">🧠 AI Suggest Schedule</button>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Reminder</button>
+    </div>
+  </div>
+
+  <!-- Patient select -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <label style="font-size:13px;font-weight:600;color:var(--text-muted);">Patient:</label>
+    <select class="form-select" id="patientFilter" style="width:240px;" onchange="loadReminders()"></select>
+  </div>
+
+  <!-- Reminder list by type -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="remindersGrid">
+    <div class="card" style="grid-column:1/-1;padding:60px;text-align:center;color:var(--text-dim);">Loading...</div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:20px;" id="modalTitle">Add Reminder</div>
+
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-select-grid" id="typeGrid"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Label</label>
+      <input type="text" class="form-input" id="mLabel" placeholder="e.g. Morning medication">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input type="time" class="form-input" id="mTime">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Patient</label>
+        <select class="form-select" id="mPatient"></select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Repeat on days</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="dayBtns">
+        <button class="day-btn active" data-day="Mon">Mon</button>
+        <button class="day-btn active" data-day="Tue">Tue</button>
+        <button class="day-btn active" data-day="Wed">Wed</button>
+        <button class="day-btn active" data-day="Thu">Thu</button>
+        <button class="day-btn active" data-day="Fri">Fri</button>
+        <button class="day-btn active" data-day="Sat">Sat</button>
+        <button class="day-btn active" data-day="Sun">Sun</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReminder()" id="saveBtn">Save Reminder</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Suggest Modal -->
+<div id="suggestModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:28px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:6px;">🧠 AI Suggested Schedule</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Review and add the suggestions you want.</div>
+    <div id="suggestList"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="document.getElementById('suggestModal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="addAllSuggestions()" id="addAllBtn">Add All Suggestions</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+const TYPE_ICONS={meal:'🍽️',medication:'💊',bathroom:'🚽',hydration:'💧',activity:'🚶',social:'👥',sleep:'😴',grooming:'🪥'};
+const TYPE_LABELS={meal:'Meal',medication:'Medication',bathroom:'Bathroom',hydration:'Hydration',activity:'Activity',social:'Social',sleep:'Sleep',grooming:'Grooming'};
+const TYPE_COLORS={meal:'#fef3c7',medication:'#fee2e2',bathroom:'#dbeafe',hydration:'#ccfbf1',activity:'#dcfce7',social:'#f3e8ff',sleep:'#e0e7ff',grooming:'#fce7f3'};
+
+let reminders=[], patients=[], selectedType='meal', editingId=null, suggestions=[];
+
+// Build type grid in modal
+function buildTypeGrid(){
+  document.getElementById('typeGrid').innerHTML=Object.entries(TYPE_ICONS).map(([t,icon])=>`
+    <div class="type-option ${t===selectedType?'selected':''}" onclick="selectType('${t}',this)">
+      <span class="type-icon-big">${icon}</span>${TYPE_LABELS[t]}
+    </div>`).join('');
+}
+
+function selectType(t, el){
+  selectedType=t;
+  document.querySelectorAll('.type-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  if(!document.getElementById('mLabel').value){
+    document.getElementById('mLabel').value=TYPE_LABELS[t];
+  }
+}
+
+// Load data
+async function init(){
+  try{
+    const pr=await apiFetch('/api/patients');
+    patients=await pr.json();
+    const sel=['patientFilter','mPatient'];
+    sel.forEach(id=>{
+      document.getElementById(id).innerHTML=patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    });
+  }catch{ patients=[{id:'P001',name:'Margaret Thompson'}]; }
+  loadReminders();
+}
+
+async function loadReminders(){
+  const patientId=document.getElementById('patientFilter').value;
+  try{
+    const res=await apiFetch(`/api/reminders?patientId=${patientId}`);
+    reminders=await res.json();
+    renderReminders();
+  }catch{ showToast('Could not load reminders','error'); }
+}
+
+function renderReminders(){
+  // Group by type
+  const byType={};
+  reminders.forEach(r=>{ if(!byType[r.type]) byType[r.type]=[]; byType[r.type].push(r); });
+
+  if(!reminders.length){
+    document.getElementById('remindersGrid').innerHTML=`
+      <div class="card" style="grid-column:1/-1;padding:60px;text-align:center;color:var(--text-dim);">
+        <div style="font-size:40px;margin-bottom:12px;">🔔</div>
+        No reminders yet. <a href="#" onclick="openAddModal()" style="color:var(--teal);">Add one</a> or let <a href="#" onclick="suggestReminders()" style="color:var(--teal);">AI suggest a schedule</a>.
+      </div>`;
+    return;
+  }
+
+  document.getElementById('remindersGrid').innerHTML=Object.entries(byType).map(([type,rems])=>`
+    <div class="card">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:9px;background:${TYPE_COLORS[type]||'#f0f0f0'};display:flex;align-items:center;justify-content:center;font-size:20px;">${TYPE_ICONS[type]||'📌'}</div>
+        <div style="font-weight:700;font-size:15px;">${TYPE_LABELS[type]||type}</div>
+        <span class="badge badge-teal" style="margin-left:auto;">${rems.length}</span>
+      </div>
+      ${rems.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>`
+        <div class="reminder-row">
+          <label class="toggle">
+            <input type="checkbox" ${r.active?'checked':''} onchange="toggleReminder('${r.id}',this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:13px;color:${r.active?'var(--text)':'var(--text-dim)'};">${r.label}</div>
+            <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px;">${r.time} · ${r.days.join(', ')}</div>
+          </div>
+          <button onclick="openEditModal('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);padding:4px 6px;border-radius:6px;" title="Edit">✎</button>
+          <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);padding:4px 6px;border-radius:6px;" title="Delete">🗑</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// CRUD
+async function toggleReminder(id, active){
+  try{
+    await apiFetch(`/api/reminders/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
+    const r=reminders.find(r=>r.id===id); if(r) r.active=active;
+    showToast(`Reminder ${active?'enabled':'disabled'}`,'success');
+  }catch{ showToast('Update failed','error'); }
+}
+
+async function deleteReminder(id){
+  if(!confirm('Delete this reminder?'))return;
+  try{
+    await apiFetch(`/api/reminders/${id}`,{method:'DELETE'});
+    reminders=reminders.filter(r=>r.id!==id);
+    renderReminders();
+    showToast('Reminder deleted','success');
+  }catch{ showToast('Delete failed','error'); }
+}
+
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Add Reminder';
+  document.getElementById('mLabel').value='';
+  document.getElementById('mTime').value='08:00';
+  selectedType='meal';
+  buildTypeGrid();
+  document.querySelectorAll('.day-btn').forEach(b=>b.classList.add('active'));
+  document.getElementById('modal').style.display='flex';
+}
+
+function openEditModal(id){
+  const r=reminders.find(r=>r.id===id); if(!r) return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='Edit Reminder';
+  selectedType=r.type;
+  buildTypeGrid();
+  document.getElementById('mLabel').value=r.label;
+  document.getElementById('mTime').value=r.time;
+  document.getElementById('mPatient').value=r.patientId;
+  document.querySelectorAll('.day-btn').forEach(b=>{
+    b.classList.toggle('active', r.days.includes(b.dataset.day));
+  });
+  document.getElementById('modal').style.display='flex';
+}
+
+function closeModal(){ document.getElementById('modal').style.display='none'; editingId=null; }
+
+document.querySelectorAll('.day-btn').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+
+async function saveReminder(){
+  const label=document.getElementById('mLabel').value.trim();
+  const time=document.getElementById('mTime').value;
+  const patientId=document.getElementById('mPatient').value;
+  const days=[...document.querySelectorAll('.day-btn.active')].map(b=>b.dataset.day);
+  if(!label||!time){ showToast('Fill in all fields','error'); return; }
+
+  try{
+    if(editingId){
+      await apiFetch(`/api/reminders/${editingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:selectedType,label,time,days})});
+      showToast('Reminder updated','success');
+    } else {
+      await apiFetch('/api/reminders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patientId,type:selectedType,label,time,days})});
+      showToast('Reminder added','success');
+    }
+    closeModal();
+    loadReminders();
+  }catch(e){ showToast(e.message,'error'); }
+}
+
+// AI suggestions
+async function suggestReminders(){
+  const patientId=document.getElementById('patientFilter').value;
+  const btn=document.querySelector('[onclick="suggestReminders()"]');
+  btn.textContent='🧠 Thinking...'; btn.disabled=true;
+  try{
+    const res=await apiFetch('/api/suggest-reminders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patientId})});
+    const data=await res.json();
+    if(!data.success) throw new Error(data.error);
+    suggestions=data.suggestions;
+    document.getElementById('suggestList').innerHTML=suggestions.map((s,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+        <input type="checkbox" id="sug${i}" checked style="width:16px;height:16px;accent-color:var(--teal);">
+        <div style="width:36px;height:36px;border-radius:9px;background:${TYPE_COLORS[s.type]||'#f0f0f0'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${TYPE_ICONS[s.type]||'📌'}</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:13px;">${s.label}</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${s.time} · ${(s.days||['Daily']).join(', ')}</div>
+        </div>
+      </div>`).join('');
+    document.getElementById('suggestModal').style.display='flex';
+  }catch(e){ showToast(`AI error: ${e.message}`,'error'); }
+  finally{ btn.textContent='🧠 AI Suggest Schedule'; btn.disabled=false; }
+}
+
+async function addAllSuggestions(){
+  const patientId=document.getElementById('patientFilter').value;
+  const checked=suggestions.filter((_,i)=>document.getElementById(`sug${i}`)?.checked);
+  document.getElementById('addAllBtn').textContent='Adding...';
+  document.getElementById('addAllBtn').disabled=true;
+  try{
+    for(const s of checked){
+      await apiFetch('/api/reminders',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({patientId,type:s.type,label:s.label,time:s.time,days:s.days||['Mon','Tue','Wed','Thu','Fri','Sat','Sun']})});
+    }
+    showToast(`Added ${checked.length} reminders`,'success');
+    document.getElementById('suggestModal').style.display='none';
+    loadReminders();
+  }catch(e){ showToast(e.message,'error'); }
+  finally{ document.getElementById('addAllBtn').textContent='Add All Suggestions'; document.getElementById('addAllBtn').disabled=false; }
+}
+
+document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this)closeModal(); });
+document.getElementById('suggestModal').addEventListener('click',function(e){ if(e.target===this)this.style.display='none'; });
+
+let _tt;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'success');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',3000);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CogniCare — AI-Powered Cognitive Care</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void:      #070b0f;
+      --deep:      #0b1220;
+      --surface:   #101925;
+      --panel:     #151f2e;
+      --border:    rgba(255,255,255,.07);
+      --border-md: rgba(255,255,255,.13);
+      --teal:      #14b8a6;
+      --teal-glow: rgba(20,184,166,.2);
+      --teal-lt:   rgba(20,184,166,.09);
+      --gold:      #e8c97a;
+      --gold-lt:   rgba(232,201,122,.09);
+      --white:     #eef4ff;
+      --muted:     #6b7fa3;
+      --dim:       #354560;
+      --font-d:    'Cormorant Garamond', serif;
+      --font-b:    'DM Sans', sans-serif;
+      --font-m:    'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing:border-box;margin:0;padding:0; }
+    html { scroll-behavior:smooth; }
+    body { font-family:var(--font-b);background:var(--void);color:var(--white);overflow-x:hidden;-webkit-font-smoothing:antialiased; }
+    a { text-decoration:none;color:inherit; }
+
+    /* ── CUSTOM CURSOR ── */
+    .cursor      { position:fixed;width:10px;height:10px;border-radius:50%;background:var(--teal);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen;transition:transform .08s; }
+    .cursor-ring { position:fixed;width:40px;height:40px;border-radius:50%;border:1px solid rgba(20,184,166,.35);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .22s cubic-bezier(.25,.46,.45,.94); }
+
+    /* ── NAV ── */
+    #topnav {
+      position:fixed;top:0;left:0;right:0;z-index:1000;
+      padding:0 52px;height:70px;
+      display:flex;align-items:center;justify-content:space-between;
+      transition:all .4s;
+    }
+    #topnav.scrolled { background:rgba(7,11,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border); }
+    .nav-logo { display:flex;align-items:center;gap:12px; }
+    .nav-logo-mark { width:38px;height:38px;background:linear-gradient(135deg,var(--teal),#0d9488);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 0 28px var(--teal-glow); }
+    .nav-logo-text { font-family:var(--font-d);font-size:22px;font-weight:400;color:var(--white);letter-spacing:.02em; }
+    .nav-logo-text em { color:var(--teal);font-style:normal; }
+    .nav-links { display:flex;gap:38px; }
+    .nav-links a { font-size:13px;font-weight:500;color:var(--muted);transition:color .2s;letter-spacing:.03em; }
+    .nav-links a:hover { color:var(--white); }
+    .btn-enter { padding:10px 24px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;box-shadow:0 0 24px var(--teal-glow); }
+    .btn-enter:hover { background:#0d9488;box-shadow:0 0 42px rgba(20,184,166,.4);transform:translateY(-1px); }
+
+    /* ── HERO ── */
+    #hero {
+      position:relative;min-height:100vh;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:130px 24px 80px;overflow:hidden;
+    }
+    #neural-canvas { position:absolute;inset:0;z-index:0; }
+    .hero-glow {
+      position:absolute;width:1000px;height:1000px;border-radius:50%;
+      background:radial-gradient(circle,rgba(20,184,166,.11) 0%,transparent 68%);
+      top:50%;left:50%;transform:translate(-50%,-50%);
+      pointer-events:none;z-index:1;animation:breathe 7s ease-in-out infinite;
+    }
+    @keyframes breathe { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8} 50%{transform:translate(-50%,-50%) scale(1.08);opacity:1} }
+
+    .hero-eyebrow {
+      position:relative;z-index:2;
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 18px;border:1px solid rgba(20,184,166,.3);border-radius:20px;
+      font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.15em;text-transform:uppercase;
+      background:rgba(20,184,166,.05);margin-bottom:36px;
+      opacity:0;animation:fadeUp .8s .2s forwards;
+    }
+    .edot { width:6px;height:6px;border-radius:50%;background:var(--teal);animation:epulse 2s infinite; }
+    @keyframes epulse { 0%,100%{opacity:1}50%{opacity:.25} }
+
+    .hero-headline {
+      position:relative;z-index:2;
+      font-family:var(--font-d);
+      font-size:clamp(58px,9vw,118px);font-weight:300;
+      line-height:1.0;letter-spacing:-.025em;
+      color:var(--white);max-width:960px;margin:0 auto 18px;
+      opacity:0;animation:fadeUp .9s .35s forwards;
+    }
+    .hero-headline em { font-style:italic;color:var(--teal);display:block; }
+
+    .hero-sub {
+      position:relative;z-index:2;
+      font-size:clamp(16px,2.2vw,21px);color:var(--muted);
+      max-width:580px;margin:0 auto 52px;line-height:1.75;font-weight:300;
+      opacity:0;animation:fadeUp .9s .5s forwards;
+    }
+
+    .hero-actions {
+      position:relative;z-index:2;
+      display:flex;gap:16px;justify-content:center;flex-wrap:wrap;
+      opacity:0;animation:fadeUp .9s .65s forwards;
+    }
+    .btn-hp { display:inline-flex;align-items:center;gap:10px;padding:17px 40px;background:var(--teal);color:#fff;border-radius:10px;font-size:15px;font-weight:600;font-family:var(--font-b);transition:all .3s;box-shadow:0 0 44px rgba(20,184,166,.3),0 4px 20px rgba(0,0,0,.3); }
+    .btn-hp:hover { background:#0d9488;box-shadow:0 0 64px rgba(20,184,166,.5),0 8px 32px rgba(0,0,0,.4);transform:translateY(-2px); }
+    .btn-hs { display:inline-flex;align-items:center;gap:10px;padding:17px 40px;background:transparent;border:1px solid var(--border-md);color:var(--white);border-radius:10px;font-size:15px;font-weight:500;font-family:var(--font-b);transition:all .3s; }
+    .btn-hs:hover { border-color:var(--teal);color:var(--teal);background:var(--teal-lt); }
+
+    /* Hero image strip */
+    .hero-image-strip {
+      position:relative;z-index:2;
+      margin-top:72px;width:100%;max-width:1100px;
+      display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px;
+      opacity:0;animation:fadeUp 1s .85s forwards;
+    }
+    .hero-img-card {
+      position:relative;border-radius:18px;overflow:hidden;
+      border:1px solid var(--border-md);
+      box-shadow:0 20px 60px rgba(0,0,0,.5);
+    }
+    .hero-img-card img { width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.85) saturate(1.1); }
+    .hero-img-card:first-child { height:280px; }
+    .hero-img-card:not(:first-child) { height:180px; }
+    .img-overlay {
+      position:absolute;inset:0;
+      background:linear-gradient(to top,rgba(7,11,15,.85) 0%,transparent 50%);
+      display:flex;align-items:flex-end;padding:18px 20px;
+    }
+    .img-tag { font-size:11px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.1em;text-transform:uppercase;font-family:var(--font-m); }
+
+    .hero-scroll { position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--dim);font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:0;animation:fadeIn 1s 1.6s forwards; }
+    .scroll-line { width:1px;height:44px;background:linear-gradient(to bottom,var(--teal),transparent);animation:scrollPulse 2.2s ease-in-out infinite; }
+    @keyframes scrollPulse { 0%,100%{opacity:.3}50%{opacity:1} }
+
+    @keyframes fadeUp  { from{opacity:0;transform:translateY(26px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+
+    /* ── STATS BAR ── */
+    #stats { background:var(--deep);border-top:1px solid var(--border);border-bottom:1px solid var(--border); }
+    .stats-inner { max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr); }
+    .stat-item { padding:44px 32px;border-right:1px solid var(--border);text-align:center;transition:background .3s; }
+    .stat-item:last-child { border-right:none; }
+    .stat-item:hover { background:rgba(255,255,255,.02); }
+    .stat-num { font-family:var(--font-d);font-size:58px;font-weight:300;color:var(--teal);line-height:1;margin-bottom:8px;letter-spacing:-.02em; }
+    .stat-label { font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.07em;text-transform:uppercase; }
+
+    /* ── SECTIONS ── */
+    section { padding:120px 52px; }
+    .max-wrap { max-width:1100px;margin:0 auto; }
+    .sec-eye { font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px;font-family:var(--font-m); }
+    .sec-title { font-family:var(--font-d);font-size:clamp(40px,5.5vw,68px);font-weight:300;line-height:1.1;color:var(--white);margin-bottom:22px;letter-spacing:-.015em; }
+    .sec-title em { font-style:italic;color:var(--teal); }
+    .sec-body { font-size:17px;color:var(--muted);line-height:1.8;max-width:520px;font-weight:300; }
+
+    /* ── VISION SECTION (image + text split) ── */
+    #vision { background:var(--deep); }
+    .vision-grid { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;margin-top:0; }
+    .vision-image-stack { position:relative;height:520px; }
+    .vis-img-main {
+      position:absolute;top:0;left:0;right:40px;bottom:60px;
+      border-radius:20px;overflow:hidden;
+      border:1px solid var(--border-md);
+      box-shadow:0 24px 80px rgba(0,0,0,.6);
+    }
+    .vis-img-main img { width:100%;height:100%;object-fit:cover;filter:brightness(.88) saturate(1.15); }
+    .vis-img-accent {
+      position:absolute;bottom:0;right:0;width:55%;height:52%;
+      border-radius:16px;overflow:hidden;
+      border:1px solid var(--border-md);
+      box-shadow:0 16px 48px rgba(0,0,0,.7);
+    }
+    .vis-img-accent img { width:100%;height:100%;object-fit:cover;filter:brightness(.82) saturate(1.2); }
+    .vis-chip {
+      position:absolute;top:20px;right:20px;
+      background:rgba(7,11,15,.85);backdrop-filter:blur(12px);
+      border:1px solid rgba(20,184,166,.3);border-radius:10px;
+      padding:10px 14px;font-family:var(--font-m);font-size:11px;color:var(--teal);
+    }
+
+    /* ── FEATURES BENTO ── */
+    #features { background:var(--void); }
+    .bento { display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:60px; }
+    .bc { background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:34px;position:relative;overflow:hidden;transition:border-color .3s;opacity:0;transform:translateY(28px);transition:opacity .7s,transform .7s,border-color .3s; }
+    .bc.vis { opacity:1;transform:translateY(0); }
+    .bc:hover { border-color:rgba(20,184,166,.3); }
+    .bc::before { content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(20,184,166,.07),transparent 55%);opacity:0;transition:opacity .4s;pointer-events:none; }
+    .bc:hover::before { opacity:1; }
+    .bc-1 { grid-column:span 7; }
+    .bc-2 { grid-column:span 5; }
+    .bc-3 { grid-column:span 4; }
+    .bc-4 { grid-column:span 4; }
+    .bc-5 { grid-column:span 4; }
+    .bi { width:50px;height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:22px; }
+    .bi-t { background:rgba(20,184,166,.12); }
+    .bi-g { background:rgba(232,201,122,.12); }
+    .bi-b { background:rgba(59,130,246,.12); }
+    .bi-p { background:rgba(168,85,247,.12); }
+    .bi-r { background:rgba(239,68,68,.12); }
+    .bc-label { font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px;font-family:var(--font-m); }
+    .bc-title { font-family:var(--font-d);font-size:28px;font-weight:400;color:var(--white);line-height:1.2;margin-bottom:12px; }
+    .bc-body  { font-size:14px;color:var(--muted);line-height:1.72;font-weight:300; }
+    .bc-1 .bc-title { font-size:34px; }
+
+    .llm-flow { margin-top:26px;display:flex;align-items:center;gap:0;font-family:var(--font-m);font-size:11px;flex-wrap:wrap;gap:4px; }
+    .llm-box { padding:10px 16px;border-radius:9px;border:1px solid var(--border-md);background:var(--panel);color:var(--white);white-space:nowrap; }
+    .llm-arr { flex:1;min-width:20px;height:1px;background:linear-gradient(to right,var(--teal),rgba(20,184,166,.2));position:relative; }
+    .llm-arr::after { content:'';position:absolute;right:0;top:-3px;border:4px solid transparent;border-left:6px solid rgba(20,184,166,.5); }
+
+    /* ── HOW IT WORKS ── */
+    #how { background:var(--deep); }
+    .how-grid { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start;margin-top:60px; }
+    .how-steps { display:flex;flex-direction:column; }
+    .how-step { display:flex;gap:26px;padding:30px 0;border-bottom:1px solid var(--border);cursor:pointer;opacity:0;transform:translateX(-22px);transition:opacity .7s,transform .7s; }
+    .how-step.vis { opacity:1;transform:translateX(0); }
+    .how-step:last-child { border-bottom:none; }
+    .step-num { font-family:var(--font-d);font-size:46px;font-weight:300;color:var(--dim);line-height:1;flex-shrink:0;width:46px;transition:color .3s; }
+    .how-step:hover .step-num,.how-step.active .step-num { color:var(--teal); }
+    .step-t { font-family:var(--font-d);font-size:23px;font-weight:400;color:var(--white);margin-bottom:8px; }
+    .step-b { font-size:14px;color:var(--muted);line-height:1.7; }
+    .how-visual { position:sticky;top:110px;border-radius:22px;overflow:hidden;border:1px solid var(--border-md);box-shadow:0 24px 80px rgba(0,0,0,.6);aspect-ratio:1;opacity:0;animation:fadeIn 1s .4s forwards; }
+    .how-visual img { width:100%;height:100%;object-fit:cover;transition:all .5s;filter:brightness(.85) saturate(1.1); }
+    .how-vis-overlay { position:absolute;inset:0;background:linear-gradient(to top,rgba(7,11,15,.9) 0%,transparent 55%);display:flex;align-items:flex-end;padding:28px; }
+    .how-vis-text .title { font-family:var(--font-d);font-size:26px;color:var(--white);margin-bottom:4px; }
+    .how-vis-text .sub   { font-size:13px;color:var(--muted); }
+
+    /* ── DUAL LLM ── */
+    #dual { background:var(--void);position:relative;overflow:hidden; }
+    #dual::before { content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,.07) 0%,transparent 70%);top:-150px;right:-150px;pointer-events:none; }
+    .dual-grid { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center; }
+    .dual-diagram { background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:38px; }
+    .dd-title { font-family:var(--font-m);font-size:10px;color:var(--teal);letter-spacing:.13em;text-transform:uppercase;margin-bottom:26px; }
+    .pnode { background:var(--panel);border:1px solid var(--border-md);border-radius:13px;padding:16px 18px;margin-bottom:8px;display:flex;align-items:center;gap:12px; }
+    .pnode.hl-t { border-color:rgba(20,184,166,.4);background:rgba(20,184,166,.04); }
+    .pnode.hl-g { border-color:rgba(232,201,122,.3);background:rgba(232,201,122,.04); }
+    .pnode.hl-g2 { border-color:rgba(20,184,166,.3); }
+    .ni { width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;background:rgba(255,255,255,.05); }
+    .nl { font-size:13px;color:var(--white);font-weight:500; }
+    .ns { font-size:11px;color:var(--muted);margin-top:2px; }
+    .parr { display:flex;justify-content:center;margin:4px 0; }
+    .parr span { width:1px;height:22px;background:linear-gradient(to bottom,var(--teal),transparent);display:block;position:relative; }
+    .parr span::after { content:'';position:absolute;bottom:0;left:-3px;border:3px solid transparent;border-top:5px solid rgba(20,184,166,.45); }
+    .acc-badge { display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-family:var(--font-m);margin-top:6px; }
+    .acc-t { background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.3);color:var(--teal); }
+    .acc-g { background:rgba(232,201,122,.08);border:1px solid rgba(232,201,122,.3);color:var(--gold); }
+
+    /* ── TESTIMONIAL / QUOTE ── */
+    #quote { background:var(--deep);text-align:center;padding:140px 52px; }
+    .qt { font-family:var(--font-d);font-size:clamp(34px,5vw,68px);font-weight:300;font-style:italic;color:var(--white);max-width:920px;margin:0 auto;line-height:1.28;letter-spacing:-.01em; }
+    .qt strong { color:var(--teal);font-style:normal;font-weight:400; }
+    .qt-attr { margin-top:30px;font-size:12px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;font-family:var(--font-m); }
+
+    /* ── CAPABILITIES GRID ── */
+    #cap { background:var(--void); }
+    .cap-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-top:60px; }
+    .cap-item { padding:38px 34px;background:var(--surface);transition:background .3s;opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s,background .3s; }
+    .cap-item.vis { opacity:1;transform:translateY(0); }
+    .cap-item:hover { background:var(--panel); }
+    .cap-n { font-family:var(--font-d);font-size:13px;color:var(--teal);font-style:italic;margin-bottom:14px; }
+    .cap-t { font-family:var(--font-d);font-size:22px;color:var(--white);margin-bottom:9px;line-height:1.2; }
+    .cap-b { font-size:13px;color:var(--muted);line-height:1.72; }
+
+    /* ── CTA ── */
+    #cta { background:var(--void);text-align:center;padding:160px 52px;position:relative;overflow:hidden; }
+    #cta::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(20,184,166,.13),transparent 62%);pointer-events:none; }
+    .cta-eye   { font-family:var(--font-m);font-size:11px;color:var(--teal);letter-spacing:.15em;text-transform:uppercase;margin-bottom:22px; }
+    .cta-title { font-family:var(--font-d);font-size:clamp(52px,8.5vw,100px);font-weight:300;line-height:1.0;color:var(--white);margin-bottom:22px;letter-spacing:-.025em; }
+    .cta-title em { font-style:italic;color:var(--teal); }
+    .cta-sub { font-size:17px;color:var(--muted);max-width:480px;margin:0 auto 52px;line-height:1.75;font-weight:300; }
+    .cta-acts { display:flex;gap:16px;justify-content:center;flex-wrap:wrap; }
+
+    /* ── FOOTER ── */
+    footer { background:var(--void);border-top:1px solid var(--border);padding:36px 52px;display:flex;align-items:center;justify-content:space-between; }
+    .ft-logo { font-family:var(--font-d);font-size:18px;color:var(--dim); }
+    .ft-logo em { color:var(--teal);font-style:normal; }
+    .ft-links { display:flex;gap:28px; }
+    .ft-links a { font-size:12px;color:var(--dim);transition:color .2s; }
+    .ft-links a:hover { color:var(--muted); }
+    .ft-right { font-size:12px;color:var(--dim);font-family:var(--font-m); }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal { opacity:0;transform:translateY(26px);transition:opacity .8s,transform .8s; }
+    .reveal.vis { opacity:1;transform:translateY(0); }
+    .rd1 { transition-delay:.1s; }
+    .rd2 { transition-delay:.2s; }
+    .rd3 { transition-delay:.3s; }
+
+    @media(max-width:960px){
+      section { padding:80px 24px; }
+      #topnav { padding:0 24px; }
+      .nav-links { display:none; }
+      .vision-grid,.how-grid,.dual-grid { grid-template-columns:1fr; }
+      .how-visual { display:none; }
+      .bento { grid-template-columns:1fr; }
+      .bc-1,.bc-2,.bc-3,.bc-4,.bc-5 { grid-column:span 1; }
+      .stats-inner { grid-template-columns:repeat(2,1fr); }
+      .cap-grid { grid-template-columns:1fr; }
+      footer { flex-direction:column;gap:18px;text-align:center; }
+      .hero-image-strip { grid-template-columns:1fr;display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- ── NAV ── -->
+<nav id="topnav">
+  <a href="landing.html" class="nav-logo">
+    <div class="nav-logo-mark">🧠</div>
+    <div class="nav-logo-text">Cogni<em>Care</em></div>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="#dual">Dual AI</a>
+    <a href="#cap">Capabilities</a>
+  </div>
+  <a href="index.html" class="btn-enter">Open Platform →</a>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <canvas id="neural-canvas"></canvas>
+  <div class="hero-glow"></div>
+
+  <div class="hero-eyebrow">
+    <div class="edot"></div>
+    AI-Powered Cognitive Care Platform
+  </div>
+
+  <h1 class="hero-headline">
+    Care that<br><em>remembers</em>
+  </h1>
+
+  <p class="hero-sub">
+    CogniCare uses dual large language models to monitor, summarize, and support patients living with cognitive decline — with clinical precision and human warmth.
+  </p>
+
+  <div class="hero-actions">
+    <a href="index.html" class="btn-hp">Open Dashboard →</a>
+    <a href="#how"       class="btn-hs">See how it works</a>
+  </div>
+
+  <!-- Real image strip -->
+  <div class="hero-image-strip">
+    <div class="hero-img-card">
+      <img src="https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=900&q=80&fit=crop"
+           alt="Elderly person using technology for care" loading="lazy">
+      <div class="img-overlay"><span class="img-tag">Patient monitoring</span></div>
+    </div>
+    <div class="hero-img-card">
+      <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&q=80&fit=crop"
+           alt="Medical AI technology" loading="lazy">
+      <div class="img-overlay"><span class="img-tag">AI analysis</span></div>
+    </div>
+    <div class="hero-img-card">
+      <img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=600&q=80&fit=crop"
+           alt="Caregiver with patient" loading="lazy">
+      <div class="img-overlay"><span class="img-tag">Caregiver support</span></div>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    Scroll to explore
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div id="stats">
+  <div class="stats-inner">
+    <div class="stat-item"><div class="stat-num" data-count="98">0</div><div class="stat-label">Summary accuracy rate</div></div>
+    <div class="stat-item"><div class="stat-num" data-count="2">0</div><div class="stat-label">LLM verification layers</div></div>
+    <div class="stat-item"><div class="stat-num" data-count="24">0</div><div class="stat-label">Hour continuous monitoring</div></div>
+    <div class="stat-item"><div class="stat-num" data-count="100">0</div><div class="stat-label">% open-source stack</div></div>
+  </div>
+</div>
+
+<!-- ── VISION ── -->
+<section id="vision">
+  <div class="max-wrap">
+    <div class="vision-grid">
+      <div class="vision-image-stack reveal">
+        <div class="vis-img-main">
+          <img src="https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=900&q=80&fit=crop"
+               alt="Elderly person using smart technology at home" loading="lazy">
+        </div>
+        <div class="vis-img-accent">
+          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&q=80&fit=crop"
+               alt="Caregiver monitoring dashboard" loading="lazy">
+        </div>
+        <div class="vis-chip">🧠 AI monitoring active</div>
+      </div>
+      <div class="reveal rd2">
+        <div class="sec-eye">Our Mission</div>
+        <h2 class="sec-title">Technology that<br><em>dignifies</em> care</h2>
+        <p class="sec-body">Cognitive decline affects millions of families. CogniCare bridges the gap between patient and caregiver — bringing AI-powered insight to everyday care without replacing the human connection at its heart.</p>
+        <div style="margin-top:36px;display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Built for real care settings</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Designed with caregivers, not just for them. Every feature reflects the realities of day-to-day cognitive care.</div></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Two AI minds, one verified truth</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Dual-LLM verification ensures every daily summary is grounded in actual observed events — no hallucinations.</div></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Always on, always there</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">24-hour monitoring with real-time alerts means the right person knows the moment their patient needs help.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section id="features">
+  <div class="max-wrap">
+    <div class="reveal">
+      <div class="sec-eye">Platform Features</div>
+      <h2 class="sec-title">Everything care<br><em>demands</em></h2>
+      <p class="sec-body">A complete cognitive care platform built with clinical precision and human warmth — from real-time alerts to AI-powered daily narratives.</p>
+    </div>
+    <div class="bento">
+      <div class="bc bc-1">
+        <div class="bi bi-t">🔄</div>
+        <div class="bc-label">Core Innovation</div>
+        <div class="bc-title">Dual-LLM Verified Daily Summaries</div>
+        <div class="bc-body">Gemini generates a compassionate narrative from the day's activity log. A second model on OpenRouter independently fact-checks every claim against raw data — flagging hallucinations, omissions, and inaccuracies before the report reaches the caregiver.</div>
+        <div class="llm-flow">
+          <div class="llm-box">📋 Activity Log</div>
+          <div class="llm-arr"></div>
+          <div class="llm-box" style="border-color:rgba(20,184,166,.4);color:var(--teal);">✦ Gemini</div>
+          <div class="llm-arr"></div>
+          <div class="llm-box" style="border-color:rgba(232,201,122,.4);color:var(--gold);">⚖ Auditor</div>
+          <div class="llm-arr"></div>
+          <div class="llm-box" style="border-color:rgba(20,184,166,.4);">✓ Final Report</div>
+        </div>
+      </div>
+      <div class="bc bc-2">
+        <div class="bi bi-b">👁</div>
+        <div class="bc-label">Vision AI</div>
+        <div class="bc-title">Multimodal Image Analysis</div>
+        <div class="bc-body">Upload photos or video frames for a structured clinical assessment — mood, agitation, posture, grooming, and urgency level — analyzed by Gemini Vision and returned as structured JSON.</div>
+      </div>
+      <div class="bc bc-3">
+        <div class="bi bi-p">💬</div>
+        <div class="bc-label">Dual Mode Chat</div>
+        <div class="bc-title">Patient & Caregiver AI</div>
+        <div class="bc-body">Two AI personalities: a gentle companion for patients using simple, reassuring language — and an expert clinical advisor for caregivers.</div>
+      </div>
+      <div class="bc bc-4">
+        <div class="bi bi-g">🔔</div>
+        <div class="bc-label">Scheduling</div>
+        <div class="bc-title">Smart Reminders</div>
+        <div class="bc-body">AI-generated daily schedules tailored to the patient's stage, with browser notifications, speech synthesis, and full activity logging.</div>
+      </div>
+      <div class="bc bc-5">
+        <div class="bi bi-r">🚨</div>
+        <div class="bc-label">Safety</div>
+        <div class="bc-title">Real-time Alerts</div>
+        <div class="bc-body">Patients send distress signals — pain, fall, confusion — with tiered severity. Caregivers receive instant SSE notification in real time.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <div class="max-wrap">
+    <div class="reveal">
+      <div class="sec-eye">How It Works</div>
+      <h2 class="sec-title">From data to<br><em>understanding</em></h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-steps">
+        <div class="how-step" data-img="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=700&q=80&fit=crop" data-title="Activity Logging" data-sub="Every interaction is captured automatically">
+          <div class="step-num">01</div>
+          <div>
+            <div class="step-t">Continuous Activity Capture</div>
+            <div class="step-b">Every reminder sent, chat message, alert, image analysis, and patient response is timestamped and logged to the patient's daily activity record.</div>
+          </div>
+        </div>
+        <div class="how-step" data-img="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=700&q=80&fit=crop" data-title="Gemini Generates" data-sub="First-pass empathetic narrative">
+          <div class="step-num">02</div>
+          <div>
+            <div class="step-t">Gemini Writes the Summary</div>
+            <div class="step-b">At day's end, Gemini Flash reads the full activity log and writes an empathetic, clinical narrative covering cognition, mood, medication, and safety.</div>
+          </div>
+        </div>
+        <div class="how-step" data-img="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=700&q=80&fit=crop" data-title="OpenRouter Audits" data-sub="Hallucination detection & fact-checking">
+          <div class="step-num">03</div>
+          <div>
+            <div class="step-t">OpenRouter Fact-Checks</div>
+            <div class="step-b">A second LLM independently reviews the summary against raw logs — identifying hallucinations, unsupported claims, and omissions. Accuracy is scored 0–100.</div>
+          </div>
+        </div>
+        <div class="how-step" data-img="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=700&q=80&fit=crop" data-title="Verified Report" data-sub="Delivered to the caregiver dashboard">
+          <div class="step-num">04</div>
+          <div>
+            <div class="step-t">Caregiver Receives Verified Report</div>
+            <div class="step-b">The final corrected summary — with full audit trail and error annotations — is delivered to the caregiver dashboard. Trust through transparency.</div>
+          </div>
+        </div>
+      </div>
+      <div class="how-visual" id="howVis" style="position:relative;">
+        <img id="howImg" src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=700&q=80&fit=crop" alt="How it works visual">
+        <div class="how-vis-overlay">
+          <div class="how-vis-text">
+            <div class="title" id="howVisTitle">Activity Logging</div>
+            <div class="sub"   id="howVisSub">Every interaction is captured automatically</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DUAL LLM ── -->
+<section id="dual">
+  <div class="max-wrap">
+    <div class="dual-grid">
+      <div class="dual-diagram reveal">
+        <div class="dd-title">// Dual-LLM Verification Pipeline</div>
+        <div class="pnode">
+          <div class="ni">📋</div>
+          <div><div class="nl">Raw Activity Log</div><div class="ns">Timestamped events · 24hr window</div></div>
+        </div>
+        <div class="parr"><span></span></div>
+        <div class="pnode hl-t">
+          <div class="ni">✦</div>
+          <div><div class="nl" style="color:var(--teal);">Gemini 1.5 Flash — Generator</div><div class="ns">Narrative summary · Compassionate tone</div></div>
+        </div>
+        <div class="parr"><span></span></div>
+        <div class="pnode hl-g">
+          <div class="ni">⚖</div>
+          <div><div class="nl" style="color:var(--gold);">OpenRouter LLM — Auditor</div><div class="ns">Fact-check · Hallucination detection</div></div>
+        </div>
+        <div class="parr"><span></span></div>
+        <div class="pnode hl-g2">
+          <div class="ni">✓</div>
+          <div><div class="nl">Verified Final Report</div><div class="ns">Accuracy scored · Errors annotated</div></div>
+        </div>
+        <div style="margin-top:14px;">
+          <span class="acc-badge acc-t">● accuracy_score: 97/100</span>
+          <span class="acc-badge acc-g" style="margin-left:8px;">● hallucinated_facts: []</span>
+        </div>
+      </div>
+      <div class="reveal rd2">
+        <div class="sec-eye">Verified Intelligence</div>
+        <h2 class="sec-title">Two minds are<br><em>better than one</em></h2>
+        <p class="sec-body">Single-LLM summaries can hallucinate — inventing details that were never in the activity log. CogniCare's dual-LLM architecture puts every generated sentence through a second independent audit before it reaches a caregiver.</p>
+        <div style="margin-top:32px;display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Hallucination Detection</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Facts not grounded in the activity log are flagged and removed from the final report.</div></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Omission Recovery</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Important events the first model missed are surfaced and included in the corrected summary.</div></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-lt);border:1px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">✓</div>
+            <div><div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;">Full Audit Trail</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Caregivers see exactly what was corrected, with severity levels and specific error annotations.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── QUOTE ── -->
+<section id="quote">
+  <div class="max-wrap">
+    <div class="reveal">
+      <div class="qt">"Every moment of clarity matters. Every detail in the log matters. <strong>Accuracy isn't a feature — it's the foundation of care.</strong>"</div>
+      <div class="qt-attr">CogniCare Design Principle · Queen's University · Team 891A</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CAPABILITIES ── -->
+<section id="cap">
+  <div class="max-wrap">
+    <div class="reveal">
+      <div class="sec-eye">Full Capabilities</div>
+      <h2 class="sec-title">What CogniCare<br><em>does for you</em></h2>
+    </div>
+    <div class="cap-grid">
+      <div class="cap-item" style="transition-delay:.05s;">
+        <div class="cap-n">01 /</div>
+        <div class="cap-t">Dual-LLM Daily Reports</div>
+        <div class="cap-b">Gemini writes, OpenRouter verifies. Every daily summary is cross-checked for accuracy with a full audit trail showing exactly what was corrected and why.</div>
+      </div>
+      <div class="cap-item" style="transition-delay:.1s;">
+        <div class="cap-n">02 /</div>
+        <div class="cap-t">AI Image Analysis</div>
+        <div class="cap-b">Upload photos for structured clinical assessment. Cognitive indicators, physical state, immediate needs, and urgency — all analyzed by Gemini Vision.</div>
+      </div>
+      <div class="cap-item" style="transition-delay:.15s;">
+        <div class="cap-n">03 /</div>
+        <div class="cap-t">Patient Companion Chat</div>
+        <div class="cap-b">Simple, warm conversation designed for patients with cognitive decline. Short sentences, gentle reassurance, and automatic orientation cues.</div>
+      </div>
+      <div class="cap-item" style="transition-delay:.2s;">
+        <div class="cap-n">04 /</div>
+        <div class="cap-t">Caregiver Expert Chat</div>
+        <div class="cap-b">Evidence-based guidance on behavioral changes, communication strategies, medication questions, and caregiver burnout — available 24/7.</div>
+      </div>
+      <div class="cap-item" style="transition-delay:.25s;">
+        <div class="cap-n">05 /</div>
+        <div class="cap-t">Smart Reminder Engine</div>
+        <div class="cap-b">AI-suggested daily schedules tailored to the patient's stage. Browser push notifications, speech synthesis, and full activity logging.</div>
+      </div>
+      <div class="cap-item" style="transition-delay:.3s;">
+        <div class="cap-n">06 /</div>
+        <div class="cap-t">Emergency Alert System</div>
+        <div class="cap-b">One-tap distress signals with severity tiers — pain, fall, emergency — delivered to caregivers via real-time SSE stream with confirmation overlays.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta">
+  <div class="max-wrap">
+    <div class="reveal">
+      <div class="cta-eye">Start Now</div>
+      <div class="cta-title">Begin<br><em>caring better</em></div>
+      <p class="cta-sub">CogniCare is ready to use. Open the platform and add your first patient in under two minutes.</p>
+      <div class="cta-acts">
+        <a href="index.html"     class="btn-hp">Open Dashboard →</a>
+        <a href="caregiver.html" class="btn-hs">View Patients</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="ft-logo">Cogni<em>Care</em></div>
+  <div class="ft-links">
+    <a href="index.html">Dashboard</a>
+    <a href="caregiver.html">Patients</a>
+    <a href="analyze.html">Analyze</a>
+    <a href="chat.html">AI Chat</a>
+    <a href="reminders.html">Reminders</a>
+  </div>
+  <div class="ft-right">Team 891A · Queen's University</div>
+</footer>
+
+<script>
+// ── CURSOR ──────────────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+const ring   = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{ mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px'; });
+(function animRing(){ rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing); })();
+
+// ── NAV SCROLL ──────────────────────────────────────────────────
+window.addEventListener('scroll',()=>{ document.getElementById('topnav').classList.toggle('scrolled',window.scrollY>40); });
+
+// ── NEURAL CANVAS ───────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('neural-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,nodes=[];
+  function resize(){ W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight; }
+  class Node{
+    constructor(){ this.reset(); }
+    reset(){ this.x=Math.random()*W;this.y=Math.random()*H;this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;this.r=Math.random()*1.8+.8;this.a=Math.random(); }
+    update(){ this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>W)this.vx*=-1;if(this.y<0||this.y>H)this.vy*=-1; }
+  }
+  resize();
+  for(let i=0;i<65;i++) nodes.push(new Node());
+  window.addEventListener('resize',resize);
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    nodes.forEach(n=>n.update());
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<145){ ctx.strokeStyle=`rgba(20,184,166,${(1-d/145)*.16})`;ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke(); }
+    }
+    nodes.forEach(n=>{ ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fillStyle=`rgba(20,184,166,${n.a*.45})`;ctx.fill(); });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── BENTO MOUSE GLOW ────────────────────────────────────────────
+document.querySelectorAll('.bc').forEach(card=>{
+  card.addEventListener('mousemove',e=>{ const r=card.getBoundingClientRect();card.style.setProperty('--mx',`${e.clientX-r.left}px`);card.style.setProperty('--my',`${e.clientY-r.top}px`); });
+});
+
+// ── STATS COUNTER ───────────────────────────────────────────────
+function countUp(el,end,suffix){
+  let s=0,step=end/48;
+  const tick=()=>{ s=Math.min(s+step,end);el.textContent=Math.floor(s)+suffix;if(s<end)requestAnimationFrame(tick); };
+  tick();
+}
+
+// ── INTERSECTION OBSERVER ───────────────────────────────────────
+const io=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting)return;
+    const el=e.target;
+    if(el.classList.contains('reveal')||el.classList.contains('bc')||el.classList.contains('how-step')||el.classList.contains('cap-item'))
+      el.classList.add('vis');
+    if(el.dataset.count){
+      const pct=el.closest('.stat-item').querySelector('.stat-label').textContent.includes('%');
+      countUp(el,parseInt(el.dataset.count),pct?'%':'+');
+    }
+    io.unobserve(el);
+  });
+},{threshold:.15});
+document.querySelectorAll('.reveal,.bc,.how-step,.cap-item,[data-count]').forEach(el=>io.observe(el));
+
+// ── HOW-IT-WORKS STEP VISUALS ───────────────────────────────────
+document.querySelectorAll('.how-step').forEach(step=>{
+  step.addEventListener('mouseenter',()=>{
+    document.querySelectorAll('.how-step').forEach(s=>s.classList.remove('active'));
+    step.classList.add('active');
+    const img=document.getElementById('howImg');
+    const imgSrc=step.dataset.img;
+    if(img&&imgSrc){ img.style.opacity='0';setTimeout(()=>{ img.src=imgSrc;img.style.opacity='1'; },200); img.style.transition='opacity .2s'; }
+    const t=document.getElementById('howVisTitle'),s2=document.getElementById('howVisSub');
+    if(t)t.textContent=step.dataset.title;
+    if(s2)s2.textContent=step.dataset.sub;
+  });
+});
+
+// ── SMOOTH SCROLL ───────────────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{ e.preventDefault();document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'}); });
+});
+</script>
+</body>
+</html>

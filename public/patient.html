@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CogniCare — Hello!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body { background: linear-gradient(135deg,#e8f5f3 0%,#f0f9ff 100%); }
+    .p-wrap { max-width:680px;margin:0 auto;padding:28px 20px; }
+    .top-bar { display:flex;justify-content:space-between;align-items:center;margin-bottom:24px; }
+    .back-link { display:flex;align-items:center;gap:6px;color:var(--teal-dark);font-weight:600;font-size:14px;padding:8px 14px;background:var(--teal-light);border-radius:8px; }
+    .clock-box { background:white;border-radius:20px;padding:24px 28px;text-align:center;margin-bottom:20px;box-shadow:var(--shadow-lg);border:1px solid var(--border); }
+    .alerts-box { margin-bottom:16px; }
+    .chat-box { background:white;border-radius:20px;padding:20px;box-shadow:var(--shadow);border:1px solid var(--border); }
+    .chat-messages { height:220px;overflow-y:auto;padding:4px;margin-bottom:12px; }
+    .chat-form { display:flex;gap:8px; }
+    .next-bar { background:white;border:2px solid var(--teal);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px; }
+    /* Alert sent confirmation */
+    .alert-sent-overlay {
+      position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;
+      display:flex;align-items:center;justify-content:center;
+      animation:fadeIn .3s ease;
+    }
+    .alert-sent-box {
+      background:white;border-radius:20px;padding:36px 40px;text-align:center;
+      max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);
+    }
+    .alert-sent-icon  { font-size:64px;margin-bottom:14px; }
+    .alert-sent-title { font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);margin-bottom:8px; }
+    .alert-sent-sub   { font-size:15px;color:var(--text-muted);margin-bottom:20px; }
+    @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  </style>
+</head>
+<body>
+<div class="p-wrap">
+
+  <div class="top-bar">
+    <a href="index.html" class="back-link">← Caregiver View</a>
+    <div style="font-size:13px;color:var(--text-muted);font-weight:500;">Patient Mode</div>
+  </div>
+
+  <!-- Clock -->
+  <div class="clock-box">
+    <div class="patient-clock" id="pClock">--:--</div>
+    <div class="patient-date"  id="pDate">Loading...</div>
+    <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);margin-top:10px;" id="pGreeting">Hello!</div>
+  </div>
+
+  <!-- Next reminder bar -->
+  <div id="nextBar" style="display:none;" class="next-bar">
+    <div style="font-size:28px;" id="nrIcon">🔔</div>
+    <div>
+      <div style="font-weight:700;font-size:16px;" id="nrLabel">—</div>
+      <div style="font-size:12px;color:var(--teal-dark);font-family:'JetBrains Mono',monospace;" id="nrTime">—</div>
+    </div>
+  </div>
+
+  <!-- Active reminder alerts -->
+  <div class="alerts-box" id="alertsBox"></div>
+
+  <!-- Action buttons -->
+  <div style="margin-bottom:18px;">
+    <button class="patient-btn patient-btn-done" onclick="markDone()">✅ I'm doing okay</button>
+    <button class="patient-btn patient-btn-help" onclick="askHelp()">🙋 I need some help</button>
+    <button class="patient-btn patient-btn-call" onclick="alertCaregiver('urgent', '🚨 Patient pressed emergency button and needs immediate help!')">
+      🚨 Alert My Caregiver
+    </button>
+  </div>
+
+  <!-- Quick alert buttons -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+    <button onclick="alertCaregiver('medium','Patient says they are in pain and need assistance.')"
+      style="padding:14px;background:white;border:2px solid #fca5a5;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:#991b1b;transition:all .2s;"
+      onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">
+      😣 I'm in pain
+    </button>
+    <button onclick="alertCaregiver('medium','Patient says they feel unwell and need attention.')"
+      style="padding:14px;background:white;border:2px solid #fcd34d;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:#92400e;transition:all .2s;"
+      onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='white'">
+      🤒 I feel unwell
+    </button>
+    <button onclick="alertCaregiver('low','Patient says they had a fall and may need checking.')"
+      style="padding:14px;background:white;border:2px solid #f9a8d4;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:#9d174d;transition:all .2s;"
+      onmouseover="this.style.background='#fdf2f8'" onmouseout="this.style.background='white'">
+      🤕 I had a fall
+    </button>
+    <button onclick="alertCaregiver('low','Patient is feeling lonely and would like company or a call.')"
+      style="padding:14px;background:white;border:2px solid #a5b4fc;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:#3730a3;transition:all .2s;"
+      onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='white'">
+      💙 I feel lonely
+    </button>
+  </div>
+
+  <!-- AI Chat -->
+  <div class="chat-box">
+    <div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:12px;">💬 Talk to your assistant</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-bubble ai">Hello! I'm here to help you. How are you feeling today? 😊</div>
+    </div>
+    <div class="chat-form">
+      <input type="text" class="patient-chat-input" id="msgInput" placeholder="Type here..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="btn btn-primary btn-lg" onclick="sendMsg()">Send</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Alert sent confirmation overlay -->
+<div id="alertSentOverlay" style="display:none;" class="alert-sent-overlay" onclick="this.style.display='none'">
+  <div class="alert-sent-box" onclick="event.stopPropagation()">
+    <div class="alert-sent-icon" id="alertSentIcon">✅</div>
+    <div class="alert-sent-title" id="alertSentTitle">Alert Sent!</div>
+    <div class="alert-sent-sub"  id="alertSentSub">Your caregiver has been notified and will be with you soon.</div>
+    <button onclick="document.getElementById('alertSentOverlay').style.display='none'"
+      style="padding:12px 32px;background:var(--teal);color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;width:100%;">
+      OK, thank you
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="config.js"></script>
+<script>
+const TYPE_ICONS={meal:'🍽️',medication:'💊',bathroom:'🚽',hydration:'💧',activity:'🚶',social:'👥',sleep:'😴',grooming:'🪥'};
+let reminders=[], patientId='P001', patientName='Margaret', aiTyping=false;
+let firedReminders=new Set();
+
+// Clock
+function tick(){
+  const now=new Date();
+  document.getElementById('pClock').textContent=now.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+  document.getElementById('pDate').textContent=now.toLocaleDateString('en-CA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const h=now.getHours();
+  document.getElementById('pGreeting').textContent=`Good ${h<12?'morning':h<17?'afternoon':'evening'}, ${patientName}!`;
+}
+tick(); setInterval(tick,1000);
+
+// Reminder checker
+function checkReminders(){
+  const now=new Date();
+  const hhmm=now.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false}).slice(0,5);
+  const upcoming=reminders.filter(r=>r.active)
+    .map(r=>({...r,diff:(parseInt(r.time.split(':')[0])*60+parseInt(r.time.split(':')[1]))-(now.getHours()*60+now.getMinutes())}))
+    .filter(r=>r.diff>=0).sort((a,b)=>a.diff-b.diff);
+
+  if(upcoming.length){
+    const next=upcoming[0];
+    document.getElementById('nextBar').style.display='flex';
+    document.getElementById('nrIcon').textContent=TYPE_ICONS[next.type]||'🔔';
+    document.getElementById('nrLabel').textContent=`Coming up: ${next.label}`;
+    document.getElementById('nrTime').textContent=`At ${next.time}${next.diff===0?' — now':`— in ${next.diff} min`}`;
+  }
+
+  reminders.filter(r=>r.active&&r.time===hhmm&&!firedReminders.has(r.id)).forEach(r=>{
+    firedReminders.add(r.id);
+    showReminderAlert(r);
+    if(Notification.permission==='granted') new Notification('CogniCare',{body:r.label});
+    apiFetch('/api/activity',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({patientId,type:'reminder_sent',message:`Reminder shown: ${r.label}`})});
+  });
+}
+
+function showReminderAlert(r){
+  const div=document.createElement('div');
+  div.className='reminder-alert';
+  div.innerHTML=`
+    <div class="reminder-alert-icon">${TYPE_ICONS[r.type]||'🔔'}</div>
+    <div class="reminder-alert-text">${r.label}</div>
+    <div style="font-size:15px;color:var(--text-muted);margin-top:6px;">${getMsg(r.type)}</div>
+    <button onclick="this.parentElement.remove()" style="margin-top:12px;padding:10px 24px;background:var(--teal);color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Got it! ✓</button>`;
+  document.getElementById('alertsBox').prepend(div);
+  speak(r.label);
+}
+
+function getMsg(type){
+  const m={meal:"Time to eat! Good nutrition keeps you strong.",medication:"Don't forget your medication.",bathroom:"Time for a bathroom break.",hydration:"Time to drink some water!",activity:"A little movement is good for you.",social:"Time to connect with someone.",sleep:"Rest time.",grooming:"Time to freshen up!"};
+  return m[type]||"Time for your scheduled activity.";
+}
+
+function speak(text){
+  if('speechSynthesis' in window){ const u=new SpeechSynthesisUtterance(text); u.rate=0.85;u.pitch=1.1;window.speechSynthesis.speak(u); }
+}
+
+// ── ALERT CAREGIVER ───────────────────────────────────────────
+async function alertCaregiver(severity, message) {
+  try {
+    const res  = await apiFetch('/api/alerts/send', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ patientId, type:'help_request', message, severity })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error('Failed to send');
+
+    // Show confirmation overlay
+    const overlay = document.getElementById('alertSentOverlay');
+    const icon    = document.getElementById('alertSentIcon');
+    const title   = document.getElementById('alertSentTitle');
+    const sub     = document.getElementById('alertSentSub');
+
+    if (severity === 'urgent') {
+      icon.textContent  = '🚨';
+      title.textContent = 'Emergency Alert Sent!';
+      sub.textContent   = 'Your caregiver has been notified immediately and will be with you very soon. Stay calm.';
+    } else {
+      icon.textContent  = '✅';
+      title.textContent = 'Caregiver Notified!';
+      sub.textContent   = 'Your caregiver has been notified and will check on you soon.';
+    }
+    overlay.style.display = 'flex';
+    speak(severity==='urgent' ? 'Emergency alert sent. Your caregiver is on their way.' : 'Your caregiver has been notified.');
+
+  } catch (e) {
+    console.error('Alert failed:', e);
+    showToast('Could not reach server — try again', 'error');
+  }
+}
+
+function markDone(){
+  showToast("Great job! You're doing wonderful 😊",'success');
+  apiFetch('/api/activity',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({patientId,type:'patient_response',message:'Patient confirmed they are okay'})});
+}
+
+function askHelp(){
+  document.getElementById('msgInput').value="I need some help please";
+  sendMsg();
+}
+
+// Chat
+const chatHistory=[];
+async function sendMsg(){
+  if(aiTyping)return;
+  const input=document.getElementById('msgInput');
+  const msg=input.value.trim(); if(!msg)return;
+  input.value='';
+  addBubble(msg,'user');
+  chatHistory.push({role:'user',content:msg});
+  aiTyping=true;
+  const thinking=addBubble('...','ai',true);
+  try{
+    const res=await apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chatHistory,patientId,mode:'patient'})});
+    const data=await res.json();
+    thinking.remove();
+    const reply=data.response||"I'm here with you. How are you feeling?";
+    addBubble(reply,'ai');
+    chatHistory.push({role:'assistant',content:reply});
+    speak(reply);
+  }catch{
+    thinking.remove();
+    addBubble("I'm here with you! How are you feeling right now?",'ai');
+  }
+  aiTyping=false;
+}
+
+function addBubble(text,role,temp=false){
+  const msgs=document.getElementById('chatMessages');
+  const div=document.createElement('div');
+  div.className=`chat-bubble ${role}`;
+  div.textContent=text;
+  if(temp)div.style.opacity='.5';
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+async function init(){
+  if(Notification.permission==='default') Notification.requestPermission();
+  try{
+    const res=await apiFetch(`/api/reminders?patientId=${patientId}`);
+    reminders=await res.json();
+    const pr=await apiFetch(`/api/patients/${patientId}`);
+    const patient=await pr.json();
+    if(patient.name) patientName=patient.name.split(' ')[0];
+  }catch{}
+  checkReminders();
+  setInterval(checkReminders,30000);
+}
+
+let _tt;
+function showToast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'success');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',4000);
+}
+
+init();
+</script>
+</body>
+</html>
